@@ -1,0 +1,18 @@
+# Runtime data
+*.log
+*.tmp
+*.bak
+
+# Launcher runtime state
+.config/
+crashes/
+cache/
+
+# Termux/local runtime
+*.pid
+
+# Editor/system files
+.vscode/
+.idea/
+*.swp
+.DS_Store
