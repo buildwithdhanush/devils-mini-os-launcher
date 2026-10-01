@@ -1,0 +1,7 @@
+# id|name|proot_id|architectures|priority|status|package_manager
+ubuntu|Ubuntu|ubuntu|all|10|supported|apt
+debian|Debian|debian|all|20|supported|apt
+archlinux|Arch Linux|archlinux|all|30|supported|pacman
+fedora|Fedora|fedora|all|40|supported|dnf
+alpine|Alpine Linux|alpine|all|50|supported|apk
+void|Void Linux|void|all|60|supported|xbps

@@ -1,0 +1,311 @@
+name: Devil's Mini OS Launcher CI
+
+# PRD §43.4 — CI / Static Validation
+# Covers: Bash syntax, security scan, 19 mandatory tests, catalog/schema
+# validation, file-size constraints, checksum consistency.
+#
+# NOTE: This CI runner is a generic Linux (Ubuntu) environment.
+#   - It CANNOT substitute for Android/Termux hardware acceptance.
+#   - Android/Termux manual acceptance (§45, MA-01…MA-11) must be
+#     performed separately on a real supported device before §47.3 release.
+#   - "CI passes" does NOT mean "ready for Android acceptance".
+
+on:
+  push:
+    branches: ["main", "release/**"]
+  pull_request:
+    branches: ["main", "release/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────
+  # JOB 1: Bash syntax check — all .sh files
+  # PRD §43.4: bash -n (syntax check, all files)
+  # ──────────────────────────────────────────────────────────────────
+  syntax-check:
+    name: Bash Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install bash 5.x
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y bash
+          bash --version
+
+      - name: Syntax check — entry points
+        run: |
+          bash -n install.sh
+          bash -n devils-minios.sh
+
+      - name: Syntax check — modules
+        run: |
+          for f in modules/*.sh; do
+            bash -n "$f" || { echo "SYNTAX FAIL: $f"; exit 1; }
+          done
+
+      - name: Syntax check — core
+        run: |
+          for f in core/*.sh; do
+            bash -n "$f" || { echo "SYNTAX FAIL: $f"; exit 1; }
+          done
+
+      - name: Syntax check — tests
+        run: |
+          for f in test/*.sh test/lib/*.sh; do
+            bash -n "$f" || { echo "SYNTAX FAIL: $f"; exit 1; }
+          done
+
+  # ──────────────────────────────────────────────────────────────────
+  # JOB 2: Security scan — forbidden shell constructs
+  # PRD §43.4: grep for eval, sh -c, bash -c outside execute_structured()
+  # PRD §23.1: execute_structured() is the ONLY permitted subprocess spawner
+  # ──────────────────────────────────────────────────────────────────
+  security-scan:
+    name: Security / Forbidden Construct Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Scan for eval (prohibited — PRD §21/§23)
+        run: |
+          HITS=$(grep -rn '\beval\b' modules/ core/ install.sh devils-minios.sh \
+                 2>/dev/null | grep -v '^\s*#' || true)
+          if [ -n "$HITS" ]; then
+            echo "SECURITY FAIL: 'eval' found outside execute_structured():"
+            echo "$HITS"
+            exit 1
+          fi
+          echo "PASS: no eval found"
+
+      - name: Scan for bash -c (prohibited — PRD §21/§23)
+        run: |
+          HITS=$(grep -rn 'bash -c' modules/ core/ install.sh devils-minios.sh \
+                 2>/dev/null | grep -v '^\s*#' || true)
+          if [ -n "$HITS" ]; then
+            echo "SECURITY FAIL: 'bash -c' found:"
+            echo "$HITS"
+            exit 1
+          fi
+          echo "PASS: no 'bash -c' found"
+
+      - name: Scan for sh -c (prohibited — PRD §21/§23)
+        run: |
+          HITS=$(grep -rn 'sh -c' modules/ core/ install.sh devils-minios.sh \
+                 2>/dev/null | grep -v '^\s*#' || true)
+          if [ -n "$HITS" ]; then
+            echo "SECURITY FAIL: 'sh -c' found:"
+            echo "$HITS"
+            exit 1
+          fi
+          echo "PASS: no 'sh -c' found"
+
+      - name: Scan for curl|bash / wget|bash (prohibited — PRD §30.3)
+        run: |
+          HITS=$(grep -rn 'curl.*|.*bash\|wget.*|.*bash' modules/ core/ install.sh devils-minios.sh \
+                 2>/dev/null | grep -v '^\s*#' || true)
+          if [ -n "$HITS" ]; then
+            echo "SECURITY FAIL: curl|bash or wget|bash pattern found:"
+            echo "$HITS"
+            exit 1
+          fi
+          echo "PASS: no curl|bash or wget|bash found"
+
+  # ──────────────────────────────────────────────────────────────────
+  # JOB 3: Repository structure validation
+  # PRD §43.4: repository structure validation (§42)
+  # ──────────────────────────────────────────────────────────────────
+  structure-validation:
+    name: Repository Structure & File-Size Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Module count — exactly 14 (PRD §12, D1)
+        run: |
+          COUNT=$(find modules -maxdepth 1 -name '*.sh' | wc -l)
+          if [ "$COUNT" -ne 14 ]; then
+            echo "FAIL: expected 14 modules, found $COUNT"
+            ls modules/*.sh
+            exit 1
+          fi
+          echo "PASS: exactly 14 modules"
+
+      - name: future_plans.sh must not exist (PRD §12, D1)
+        run: |
+          if find . -iname '*future_plans*' | grep -q .; then
+            echo "FAIL: future_plans.sh or equivalent found"
+            find . -iname '*future_plans*'
+            exit 1
+          fi
+          echo "PASS: no future_plans.sh"
+
+      - name: Test file count — exactly 19 (PRD §43.1)
+        run: |
+          COUNT=$(find test -maxdepth 1 -name 'test_*.sh' | wc -l)
+          if [ "$COUNT" -ne 19 ]; then
+            echo "FAIL: expected 19 test files, found $COUNT"
+            ls test/test_*.sh
+            exit 1
+          fi
+          echo "PASS: exactly 19 test files"
+
+      - name: run_all.sh harness present (PRD §43.1)
+        run: |
+          [ -f test/run_all.sh ] || { echo "FAIL: test/run_all.sh missing"; exit 1; }
+          echo "PASS: test/run_all.sh present"
+
+      - name: File-size limit — no source file >500 lines (PRD §36)
+        run: |
+          OVER=0
+          for f in install.sh devils-minios.sh modules/*.sh core/*.sh; do
+            LINES=$(wc -l < "$f")
+            if [ "$LINES" -gt 500 ]; then
+              echo "OVER LIMIT ($LINES lines): $f"
+              OVER=1
+            fi
+          done
+          [ "$OVER" -eq 0 ] || exit 1
+          echo "PASS: all source files <=500 lines"
+
+      - name: Required documentation present (PRD §44)
+        run: |
+          MISSING=0
+          for doc in docs/CHANGELOG.md docs/COMPATIBILITY.md docs/DATA.md \
+                     docs/INSTALL.md docs/MODULES.md docs/SECURITY.md \
+                     docs/TRACEABILITY.md docs/TROUBLESHOOTING.md README.md; do
+            [ -f "$doc" ] || { echo "MISSING: $doc"; MISSING=1; }
+          done
+          [ "$MISSING" -eq 0 ] || exit 1
+          echo "PASS: all required docs present"
+
+  # ──────────────────────────────────────────────────────────────────
+  # JOB 4: Catalog / schema validation
+  # PRD §43.4: schema validation (all data/*.db files against §18)
+  # ──────────────────────────────────────────────────────────────────
+  catalog-validation:
+    name: Catalog Schema & Cardinality Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: desktops.db — exactly 8 Tier-1 entries (PRD §18.4, §5)
+        run: |
+          COUNT=$(grep -v '^#' data/desktops.db | grep -v '^$' | wc -l)
+          if [ "$COUNT" -ne 8 ]; then
+            echo "FAIL: desktops.db has $COUNT entries, expected 8"
+            exit 1
+          fi
+          echo "PASS: desktops.db has exactly 8 entries"
+
+      - name: desktops.db — required pipe-delimited fields (PRD §18.4)
+        run: |
+          FAIL=0
+          while IFS='|' read -r name desc pkgs startup_binary startup_args sysd min_ram; do
+            [[ "$name" == \#* ]] && continue
+            [ -z "$name" ] && continue
+            [ -z "$startup_binary" ] && { echo "FAIL: $name missing startup_binary"; FAIL=1; }
+          done < data/desktops.db
+          [ "$FAIL" -eq 0 ] || exit 1
+          echo "PASS: desktops.db fields valid"
+
+      - name: proot_apps.db — exactly 40 entries (PRD §18.2, §5)
+        run: |
+          COUNT=$(grep -v '^#' data/proot_apps.db | grep -v '^$' | wc -l)
+          if [ "$COUNT" -ne 40 ]; then
+            echo "FAIL: proot_apps.db has $COUNT entries, expected 40"
+            exit 1
+          fi
+          echo "PASS: proot_apps.db has exactly 40 entries"
+
+      - name: termux_apps.db — 30–40 entries (PRD §18.3, §5)
+        run: |
+          COUNT=$(grep -v '^#' data/termux_apps.db | grep -v '^$' | wc -l)
+          if [ "$COUNT" -lt 30 ] || [ "$COUNT" -gt 40 ]; then
+            echo "FAIL: termux_apps.db has $COUNT entries, expected 30-40"
+            exit 1
+          fi
+          echo "PASS: termux_apps.db has $COUNT entries (30-40 range)"
+
+      - name: proot_distros.db — required fields (PRD §18.1)
+        run: |
+          FAIL=0
+          while IFS='|' read -r id name proot_id archs prio status pkg_mgr; do
+            [[ "$id" == \#* ]] && continue
+            [ -z "$id" ] && continue
+            [ -z "$pkg_mgr" ] && { echo "FAIL: $id missing package_manager"; FAIL=1; }
+          done < data/proot_distros.db
+          [ "$FAIL" -eq 0 ] || exit 1
+          echo "PASS: proot_distros.db package_manager fields present"
+
+  # ──────────────────────────────────────────────────────────────────
+  # JOB 5: Checksum manifest consistency (PRD §43.4, §30.5)
+  # ──────────────────────────────────────────────────────────────────
+  checksum-validation:
+    name: SHA256SUMS Consistency
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: SHA256SUMS present
+        run: |
+          [ -f SHA256SUMS ] || { echo "FAIL: SHA256SUMS missing"; exit 1; }
+          echo "PASS: SHA256SUMS present ($(wc -l < SHA256SUMS) entries)"
+
+      - name: SHA256SUMS verification
+        run: |
+          if ! sha256sum -c SHA256SUMS 2>&1; then
+            echo "FAIL: SHA256SUMS verification failed"
+            exit 1
+          fi
+          echo "PASS: SHA256SUMS all entries verified"
+
+  # ──────────────────────────────────────────────────────────────────
+  # JOB 6: Full test suite — 19 mandatory test files (PRD §43.1)
+  # NOTE: These run on generic Ubuntu Linux, not Termux/Android.
+  #   Termux-specific code paths (proot, adb, pkg, etc.) are
+  #   gracefully stubbed in the test harness for CI purposes.
+  #   This does NOT constitute Android/Termux acceptance (§47.3).
+  # ──────────────────────────────────────────────────────────────────
+  test-suite:
+    name: "19 Mandatory Tests (Linux CI — not Android acceptance)"
+    runs-on: ubuntu-latest
+    needs:
+      - syntax-check
+      - security-scan
+      - structure-validation
+      - catalog-validation
+      - checksum-validation
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install bash 5.x and utilities
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y bash coreutils
+          bash --version
+
+      - name: Make test scripts executable
+        run: |
+          chmod +x test/run_all.sh test/lib/harness.sh test/*.sh
+
+      - name: Run all 19 mandatory test files
+        run: |
+          bash test/run_all.sh
+
+      - name: Upload test report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: data/reports/report.md
+          if-no-files-found: warn

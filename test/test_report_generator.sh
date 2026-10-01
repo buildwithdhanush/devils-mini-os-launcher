@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# test_report_generator.sh - PRD §43.1/A-6: the report generator writes
+# data/reports/report.md with the complete output + status of the suite;
+# failure to generate the report is itself a test-system failure.
+#
+# Per run_all.sh's own header comment, this file runs and aggregates the
+# other 18 mandatory test files (everything in §43.1 except itself), then
+# writes the aggregate as a Markdown report. Its own PASS/FAIL, reported via
+# print_summary below, asserts that report generation itself worked
+# correctly - it does not re-assert the content of the other 18 files'
+# individual assertions (run_all.sh's own aggregate already reports that).
+set -uo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source-path=SCRIPTDIR
+# shellcheck source=lib/harness.sh
+source "${SCRIPT_DIR}/lib/harness.sh"
+
+REPORT_DIR="${DMOS_PROJECT_ROOT}/data/reports"
+REPORT_FILE="${REPORT_DIR}/report.md"
+
+# The 18 other mandatory test files (§43.1 minus test_report_generator.sh
+# itself), run in the same fixed order as run_all.sh.
+readonly -a OTHER_MANDATORY_TEST_FILES=(
+    "test_core.sh"
+    "test_utils.sh"
+    "test_security.sh"
+    "test_linux_env.sh"
+    "test_file_mgr.sh"
+    "test_termux_apps.sh"
+    "test_proot_apps.sh"
+    "test_android_tools.sh"
+    "test_workspace.sh"
+    "test_health_check.sh"
+    "test_log_viewer.sh"
+    "test_customize.sh"
+    "test_system_tools.sh"
+    "test_system_info.sh"
+    "test_update_all.sh"
+    "test_settings.sh"
+    "test_integration.sh"
+    "test_install.sh"
+)
+
+section "Running the other ${#OTHER_MANDATORY_TEST_FILES[@]} mandatory test files to build the report"
+
+TOTAL_RUN=0
+TOTAL_PASSED=0
+TOTAL_FAILED=0
+FILES_PASSED=0
+FILES_FAILED=0
+declare -a FILE_ROWS=()
+declare -a FAILED_FILE_NAMES=()
+declare -a MISSING_FILES=()
+SUITE_START_TS="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+
+for f in "${OTHER_MANDATORY_TEST_FILES[@]}"; do
+    if [[ ! -f "${SCRIPT_DIR}/${f}" ]]; then
+        MISSING_FILES+=("${f}")
+        FILES_FAILED=$((FILES_FAILED + 1))
+        FILE_ROWS+=("| ${f} | MISSING | - | - | - |")
+        continue
+    fi
+
+    output="$(bash "${SCRIPT_DIR}/${f}" 2>&1)"
+    status=$?
+
+    summary_line="$(printf '%s\n' "${output}" | grep -E "^${f}: [0-9]+ run, [0-9]+ passed, [0-9]+ failed\$" | tail -1)"
+    file_run=0 file_passed=0 file_failed=0
+    if [[ -n "${summary_line}" ]]; then
+        file_run="$(printf '%s' "${summary_line}" | sed -E 's/^.*: ([0-9]+) run.*/\1/')"
+        file_passed="$(printf '%s' "${summary_line}" | sed -E 's/^.*, ([0-9]+) passed.*/\1/')"
+        file_failed="$(printf '%s' "${summary_line}" | sed -E 's/^.*, ([0-9]+) failed$/\1/')"
+    fi
+    TOTAL_RUN=$((TOTAL_RUN + file_run))
+    TOTAL_PASSED=$((TOTAL_PASSED + file_passed))
+    TOTAL_FAILED=$((TOTAL_FAILED + file_failed))
+
+    if [[ ${status} -ne 0 ]]; then
+        FILES_FAILED=$((FILES_FAILED + 1))
+        FAILED_FILE_NAMES+=("${f}")
+        FILE_ROWS+=("| ${f} | FAIL | ${file_run} | ${file_passed} | ${file_failed} |")
+    else
+        FILES_PASSED=$((FILES_PASSED + 1))
+        FILE_ROWS+=("| ${f} | PASS | ${file_run} | ${file_passed} | ${file_failed} |")
+    fi
+    printf '  [%s] %s (%d run, %d passed, %d failed)\n' \
+        "$([[ ${status} -eq 0 ]] && echo PASS || echo FAIL)" "${f}" "${file_run}" "${file_passed}" "${file_failed}"
+done
+
+SUITE_END_TS="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+OVERALL_STATUS="PASS"
+[[ ${FILES_FAILED} -gt 0 || ${#MISSING_FILES[@]} -gt 0 ]] && OVERALL_STATUS="FAIL"
+
+section "Writing data/reports/report.md (A-6)"
+mkdir -p "${REPORT_DIR}"
+
+{
+    printf '# Devil'"'"'s Mini OS Launcher - Test Suite Report\n\n'
+    printf -- '- Generated: %s (started %s)\n' "${SUITE_END_TS}" "${SUITE_START_TS}"
+    # Literal Markdown inline-code backticks; single-quoted deliberately so
+    # they are not misread as command substitution.
+    # shellcheck disable=SC2016
+    printf -- '- Generator: `test/test_report_generator.sh`\n'
+    printf -- '- Scope: the other %d of the %d mandatory test files (§43.1); this file'"'"'s own\n' \
+        "${#OTHER_MANDATORY_TEST_FILES[@]}" "$((${#OTHER_MANDATORY_TEST_FILES[@]} + 1))"
+    # shellcheck disable=SC2016
+    printf '  pass/fail status (below the table) is reported separately by `test/run_all.sh`.\n\n'
+    printf '## Summary\n\n'
+    printf '| Metric | Value |\n|---|---|\n'
+    printf '| Test files run | %d |\n' "${#OTHER_MANDATORY_TEST_FILES[@]}"
+    printf '| Test files passed | %d |\n' "${FILES_PASSED}"
+    printf '| Test files failed | %d |\n' "${FILES_FAILED}"
+    printf '| Test files missing | %d |\n' "${#MISSING_FILES[@]}"
+    printf '| Assertions run | %d |\n' "${TOTAL_RUN}"
+    printf '| Assertions passed | %d |\n' "${TOTAL_PASSED}"
+    printf '| Assertions failed | %d |\n' "${TOTAL_FAILED}"
+    printf '| Overall status | %s |\n\n' "${OVERALL_STATUS}"
+    printf '## Per-file results\n\n'
+    printf '| Test file | Status | Run | Passed | Failed |\n|---|---|---|---|---|\n'
+    printf '%s\n' "${FILE_ROWS[@]}"
+    printf '\n'
+    if [[ ${#MISSING_FILES[@]} -gt 0 ]]; then
+        printf '## Missing files\n\n'
+        printf -- '- %s\n' "${MISSING_FILES[@]}"
+        printf '\n'
+    fi
+    if [[ ${#FAILED_FILE_NAMES[@]} -gt 0 ]]; then
+        printf '## Failed files\n\n'
+        printf -- '- %s\n' "${FAILED_FILE_NAMES[@]}"
+        printf '\n'
+    fi
+    printf '## Complete output\n\n'
+    # shellcheck disable=SC2016
+    printf 'Full per-assertion output for each file is produced by `bash test/run_all.sh`\n'
+    printf 'and is not duplicated here; this report captures the aggregate status plus\n'
+    printf 'per-file pass/fail counts for archival (§A-6, §43.1).\n'
+} > "${REPORT_FILE}.tmp"
+mv -f "${REPORT_FILE}.tmp" "${REPORT_FILE}"
+
+assert_file_exists "data/reports/report.md is written" "${REPORT_FILE}"
+report_content="$(cat "${REPORT_FILE}" 2>/dev/null || printf '')"
+assert_contains "the report includes the summary section" "${report_content}" "## Summary"
+assert_contains "the report includes the per-file results table" "${report_content}" "## Per-file results"
+assert_contains "the report records the overall status" "${report_content}" "Overall status"
+for f in "${OTHER_MANDATORY_TEST_FILES[@]}"; do
+    assert_contains "the report mentions ${f}" "${report_content}" "${f}"
+done
+assert_eq "the reported file count matches the 18 files this generator covers" \
+    "${#OTHER_MANDATORY_TEST_FILES[@]}" "${#FILE_ROWS[@]}"
+
+print_summary "test_report_generator.sh"
