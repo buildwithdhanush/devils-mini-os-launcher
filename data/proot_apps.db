@@ -1,0 +1,41 @@
+# id|name|category|description|install_target|architectures|proot_distros
+git|Git|dev-proot|Distributed version control system|git|all|any
+vim|Vim|dev-proot|Terminal text editor|vim|all|any
+emacs|GNU Emacs|dev-proot|Extensible text editor|emacs|all|any
+gcc|GCC|dev-proot|GNU compiler collection|gcc|all|any
+firefox|Firefox|browser|Web browser|firefox|all|any
+chromium|Chromium|browser|Open-source web browser|chromium|all|any
+falkon|Falkon|browser|Lightweight Qt web browser|falkon|all|any
+libreoffice|LibreOffice|office|Full office productivity suite|libreoffice|all|any
+abiword|AbiWord|office|Lightweight word processor|abiword|all|any
+gnumeric|Gnumeric|office|Lightweight spreadsheet application|gnumeric|all|any
+gimp|GIMP|graphics|Raster image editor|gimp|all|any
+inkscape|Inkscape|graphics|Vector graphics editor|inkscape|all|any
+feh|feh|graphics|Lightweight image viewer|feh|all|any
+vlc|VLC|media|Multimedia player|vlc|all|any
+mpv|mpv|media|Command-line multimedia player|mpv|all|any
+audacious|Audacious|media|Audio player|audacious|all|any
+obs-studio|OBS Studio|media|Recording and live streaming software|obs-studio|all|any
+thunderbird|Thunderbird|communication|Email and calendar client|thunderbird|all|any
+hexchat|HexChat|communication|IRC chat client|hexchat|all|any
+pidgin|Pidgin|communication|Multi-protocol chat client|pidgin|all|any
+nmap|Nmap|security|Network discovery and auditing|nmap|all|any
+wireshark-qt|Wireshark|security|Network protocol analyzer|wireshark-qt|all|any
+aircrack-ng|Aircrack-ng|security|Wireless security auditing tools|aircrack-ng|all|any
+sqlmap|sqlmap|security|SQL injection testing tool|sqlmap|all|any
+openssh|OpenSSH|networking|SSH client and server tools|openssh|all|any
+wget|wget|networking|HTTP and FTP downloader|wget|all|any
+curl|curl|networking|Command-line HTTP client|curl|all|any
+netcat-openbsd|netcat|networking|TCP and UDP networking utility|netcat-openbsd|all|any
+supertuxkart|SuperTuxKart|games|Kart racing game|supertuxkart|all|any
+0ad|0 A.D.|games|Real-time strategy game|0ad|all|any
+gnuchess|GNU Chess|games|Chess engine and terminal interface|gnuchess|all|any
+wesnoth|The Battle for Wesnoth|games|Turn-based strategy game|wesnoth|all|any
+htop|htop|system|Interactive process viewer|htop|all|any
+neofetch|Neofetch|system|System information display|neofetch|all|any
+tmux|tmux|system|Terminal multiplexer|tmux|all|any
+gcompris-qt|GCompris|education|Educational activities for children|gcompris-qt|all|any
+kalzium|Kalzium|education|Chemistry learning application|kalzium|all|any
+octave|GNU Octave|science|Numerical computing environment|octave|all|any
+gnuplot|gnuplot|science|Command-line plotting utility|gnuplot|all|any
+keepassxc|KeePassXC|utilities|Offline password manager|keepassxc|all|any

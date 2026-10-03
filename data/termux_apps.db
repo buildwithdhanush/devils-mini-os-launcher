@@ -1,0 +1,33 @@
+# id|name|category|description|package_name|install_source|post_install_note|github_repository|github_ref|github_artifact|github_sha256
+git|Git|development|Distributed version control system|git|pkg|-|-|-|-|-
+gh|GitHub CLI|development|GitHub command-line interface|gh|pkg|-|-|-|-|-
+python|Python|development|Python interpreter and standard library|python|pkg|-|-|-|-|-
+nodejs-lts|Node.js LTS|development|JavaScript runtime|nodejs-lts|pkg|-|-|-|-|-
+clang|Clang|development|C, C++, and Objective-C compiler|clang|pkg|-|-|-|-|-
+make|Make|development|Build automation utility|make|pkg|-|-|-|-|-
+cmake|CMake|development|Cross-platform build system generator|cmake|pkg|-|-|-|-|-
+w3m|w3m|browsers|Terminal web browser|w3m|pkg|-|-|-|-|-
+lynx|Lynx|browsers|Text-mode web browser|lynx|pkg|-|-|-|-|-
+termux-x11-nightly|Termux:X11|desktop|X11 server and client companion for Termux|termux-x11-nightly|pkg|Also install the matching Termux:X11 Android app|-|-|-|-
+xorg-xhost|xhost|desktop|X server access control utility|xorg-xhost|pkg|-|-|-|-|-
+tigervnc|TigerVNC|desktop|VNC server and client tools|tigervnc|pkg|-|-|-|-|-
+fzf|fzf|cli|Fuzzy command-line finder|fzf|pkg|-|-|-|-|-
+ripgrep|ripgrep|cli|Fast recursive text search|ripgrep|pkg|-|-|-|-|-
+fd|fd|cli|Fast filesystem search|fd|pkg|-|-|-|-|-
+bat|bat|cli|Syntax-highlighting file viewer|bat|pkg|-|-|-|-|-
+jq|jq|cli|JSON processor|jq|pkg|-|-|-|-|-
+htop|htop|system|Interactive process viewer|htop|pkg|-|-|-|-|-
+tmux|tmux|system|Terminal multiplexer|tmux|pkg|-|-|-|-|-
+openssh|OpenSSH|system|SSH client and server tools|openssh|pkg|-|-|-|-|-
+util-linux|util-linux|system|Essential system utilities|util-linux|pkg|-|-|-|-|-
+termux-info|Termux Info|system|Termux diagnostic package|termux-info|pkg|-|-|-|-|-
+openssl|OpenSSL|security|TLS and cryptography toolkit|openssl|pkg|-|-|-|-|-
+gnupg|GnuPG|security|OpenPGP encryption and signing tools|gnupg|pkg|-|-|-|-|-
+nmap|Nmap|security|Network discovery and auditing|nmap|pkg|-|-|-|-|-
+ffmpeg|FFmpeg|media|Audio and video conversion tools|ffmpeg|pkg|-|-|-|-|-
+imagemagick|ImageMagick|media|Image conversion and editing tools|imagemagick|pkg|-|-|-|-|-
+sox|SoX|media|Command-line audio processing|sox|pkg|-|-|-|-|-
+curl|curl|networking|Command-line HTTP client|curl|pkg|-|-|-|-|-
+wget|wget|networking|HTTP and FTP downloader|wget|pkg|-|-|-|-|-
+netcat-openbsd|netcat|networking|TCP and UDP networking utility|netcat-openbsd|pkg|-|-|-|-|-
+dnsutils|dnsutils|networking|DNS lookup utilities|dnsutils|pkg|-|-|-|-|-

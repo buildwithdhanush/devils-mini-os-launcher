@@ -1,0 +1,9 @@
+# name|description|packages|startup_binary|startup_args|systemd_flag|min_ram_mb
+xfce4|Xfce desktop environment|xfce4,xfce4-terminal|startxfce4|-|false|1024
+lxqt|LXQt lightweight desktop|lxqt,lxqt-qtplugin|startlxqt|-|false|1024
+lxde|LXDE lightweight desktop|lxde,lxterminal|startlxde|-|false|768
+mate|MATE desktop environment|mate-desktop-environment,mate-terminal|mate-session|-|false|1024
+i3wm|i3 tiling window manager|i3,i3status|i3|-|false|512
+openbox|Openbox stacking window manager|openbox,obconf|openbox-session|-|false|512
+fluxbox|Fluxbox lightweight window manager|fluxbox|startfluxbox|-|false|512
+jwm|Joe's Window Manager|jwm|jwm|-|false|384
