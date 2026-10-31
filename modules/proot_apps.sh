@@ -100,11 +100,11 @@ proot_apps_menu() {
         printf '%s\n' "0) Back"
         choice="$(_prompt_default 'Choice' '0')"
         case "${choice}" in
-            1) _proot_apps_list; _confirm "Continue" || true ;;
+            1) _proot_apps_list; _pause "Press Enter to return to the menu" ;;
             2)
                 local cat
                 cat="$(_prompt_default 'Category (dev-proot/browser/office/graphics/media/communication/security/networking/games/system/education/science/utilities)' 'dev-proot')"
-                _proot_apps_list "${cat}"; _confirm "Continue" || true
+                _proot_apps_list "${cat}"; _pause "Press Enter to return to the menu"
                 ;;
             3) _proot_apps_install ;;
             4) _proot_apps_toggle_incompatible; sleep 1 ;;

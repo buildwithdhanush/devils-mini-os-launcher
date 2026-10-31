@@ -301,28 +301,27 @@ _copy_files() {
     local source_dir="${1:-.}"
     
     _info "Copying files to installation directory..."
-    
     # Create temporary staging directory
     local staging_dir
     staging_dir="$(mktemp -d "${INSTALL_TARGET_DIR}.staging.XXXXXX" 2>/dev/null || mktemp -d)"
     
     # Track staging directory for cleanup
     trap 'rm -rf "${staging_dir}"' EXIT
-    
     # Copy files
     cp -r "${source_dir}/devils-minios.sh" "${staging_dir}/" || _die "Failed to copy devils-minios.sh" 1
+    cp "${source_dir}/install.sh" "${staging_dir}/" || _die "Failed to copy install.sh" 1
     cp -r "${source_dir}/modules" "${staging_dir}/" || _die "Failed to copy modules" 1
     cp -r "${source_dir}/core" "${staging_dir}/" || _die "Failed to copy core" 1
     
     # Copy optional directories if they exist
     if [[ -d "${source_dir}/data" ]]; then
         cp -r "${source_dir}/data" "${staging_dir}/" || _die "Failed to copy data" 1
+        # Test-generated reports are repository evidence, not runtime data.
+        [[ ! -d "${staging_dir}/data/reports" ]] || rm -rf -- "${staging_dir}/data/reports"
     fi
-    
     if [[ -d "${source_dir}/docs" ]]; then
         cp -r "${source_dir}/docs" "${staging_dir}/" || _die "Failed to copy docs" 1
     fi
-    
     # Copy documentation files
     for doc in README.md LICENSE CHANGELOG.md SECURITY.md; do
         if [[ -f "${source_dir}/${doc}" ]]; then
@@ -336,13 +335,14 @@ _copy_files() {
             rel="${rel#./}"
             [[ -f "${staging_dir}/${rel}" ]] && printf '%s  ./%s\n' "${hash}" "${rel}" >> "${active_manifest}" || true
         done < "${source_dir}/SHA256SUMS"
-        local required_rel
-        for required_rel in devils-minios.sh modules/*.sh core/*.sh; do
+        local required_rel required_path
+        while IFS= read -r -d '' required_path; do
+            required_rel="${required_path#"${staging_dir}"/}"; [[ "${required_rel}" == "SHA256SUMS" ]] && continue
             grep -Fq "  ./${required_rel}" "${active_manifest}" || _die "Active SHA256SUMS missing required file: ${required_rel}" 1
-        done
+        done < <(find "${staging_dir}" -type f -print0)
         ( cd "${staging_dir}" && sha256sum -c SHA256SUMS --status 2>/dev/null ) || _die "E602" "Staged active-manifest verification failed" 2
     fi
-    chmod 755 "${staging_dir}/devils-minios.sh" || _die "Failed to set permissions" 1
+    chmod 755 "${staging_dir}/devils-minios.sh" "${staging_dir}/install.sh" || _die "Failed to set executable permissions" 1
     find "${staging_dir}/modules" -name "*.sh" -exec chmod 755 {} \; || _die "Failed to set module permissions" 1
     find "${staging_dir}/core" -name "*.sh" -exec chmod 755 {} \; || _die "Failed to set core permissions" 1
     # Validate staged installation

@@ -1,0 +1,24 @@
+===== VERSION =====
+Devil's Mini OS Launcher v1.0.0
+
+===== HELP =====
+Devil's Mini OS Launcher v1.0.0
+
+Usage: devils-minios [OPTIONS]
+
+Options:
+  -h, --help              Show this help message
+  -v, --version           Show version information
+  --safe-mode             Force safe mode entry
+  --debug                 Enable debug logging for this session
+  --offline               Disable network operations
+  --no-checks             Skip non-critical startup diagnostics
+  --run-module <module>   Launch a specific module directly
+  --update                Update launcher to latest version
+  --uninstall             Uninstall launcher (only from IDLE state)
+  --uninstall-auto-start  Remove auto-start configuration
+
+Supported architectures: aarch64, x86_64
+Platform: Termux on Android (API 29+)
+
+For more information, see: https://github.com/buildwithdhanush/Devils-Mini-OS-Launcher

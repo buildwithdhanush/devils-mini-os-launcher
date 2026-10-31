@@ -1,8 +1,10 @@
 # Installation
 
 Devil's Mini OS Launcher targets **Termux on Android** (API 29+, `aarch64`
-or `x86_64`). It runs on any Bash 4.3+ host in diagnostics-only mode for
-development/testing, but is only fully supported on Termux.
+or `x86_64`). **Only Termux on Android is a supported runtime host.**
+Generic Linux containers may run the automated test suite, but that does not
+create a native-Linux runtime or compatibility promise; the launcher rejects
+unsupported hosts.
 
 ## Requirements
 

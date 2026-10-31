@@ -154,6 +154,8 @@ load_state() {
     fi
     # The caller maps an unrecoverable persistent-state condition to the
     # lifecycle recovery path; never claim recovery succeeded here.
+    # Cross-file contract: modules/core.sh consumes this recovery signal.
+    # shellcheck disable=SC2034
     DEVILS_MINIOS_STATE_RECOVERY_REINITIALIZED=true
     return 0
 }
@@ -390,8 +392,7 @@ trigger_safe_mode() {
                 ;;
             2)
                 _confirm "Reset configuration to defaults (state is not affected). Continue" || continue
-                load_default_config
-                if ! save_config || ! validate_config; then
+                if ! load_default_config || ! save_config || ! validate_config; then
                     _error "E703" "Safe Mode configuration repair could not be persisted and validated" 0
                     continue
                 fi

@@ -166,9 +166,9 @@ file_mgr_menu() {
         printf '%s\n' "0) Back"
         choice="$(_prompt_default 'Choice' '0')"
         case "${choice}" in
-            1) _file_mgr_browse; _confirm "Continue" || true ;;
-            2) _file_mgr_search; _confirm "Continue" || true ;;
-            3) _file_mgr_read; _confirm "Continue" || true ;;
+            1) _file_mgr_browse; _pause "Press Enter to return to the menu" ;;
+            2) _file_mgr_search; _pause "Press Enter to return to the menu" ;;
+            3) _file_mgr_read; _pause "Press Enter to return to the menu" ;;
             4) _file_mgr_copy ;;
             5) _file_mgr_move_rename ;;
             6) _file_mgr_symlink ;;

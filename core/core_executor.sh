@@ -241,13 +241,11 @@ _executor_action_allowed() {
 # substitution (e.g. `execute_structured sha256sum ...`) or by writing
 # through the launcher's terminal directly.
 #
-# cwd policy: every non-interactive dispatch runs inside a subshell whose
-# cwd is switched to the launcher's own tmp directory (falling back to
-# HOME, then left unchanged if neither is usable) before exec — this is a
-# defense-in-depth measure so no executor can be influenced by whatever
-# directory the launcher happened to be started from, and costs nothing
-# functionally because every real call site already passes fully-resolved
-# absolute paths (or, for tar, an explicit -C) rather than relying on cwd.
+# cwd policy: non-interactive dispatches normally use the launcher's neutral
+# cwd (tmp -> HOME -> unchanged). The PRD explicitly requires sha256sum -c
+# manifest checks to run from the directory containing the manifest entries;
+# callers establish that directory with a validated `cd` before dispatch, so
+# that one operation intentionally preserves the caller's cwd.
 declare -grA DEVILS_MINIOS_EXECUTOR_TIMEOUT_SECONDS=(
     [proot-distro]=3600   # distro install/backup/restore over mobile networks
     [pkg]=900
@@ -360,7 +358,14 @@ execute_structured() {
             (( attempts < 1 )) && attempts=1
         fi
         local safe_cwd
-        safe_cwd="$(_executor_safe_cwd)" || safe_cwd=""
+        if [[ "${executor}" == "sha256sum" && "${action}" == "-c" ]]; then
+            # §23.0-05: manifest verification must run from the directory
+            # containing the manifest entries. Callers establish the
+            # validated directory before invoking execute_structured().
+            safe_cwd="${PWD}"
+        else
+            safe_cwd="$(_executor_safe_cwd)" || safe_cwd=""
+        fi
         local attempt
         for ((attempt=1; attempt<=attempts; attempt++)); do
             local -a wrapped=("${cmd[@]}")

@@ -85,12 +85,17 @@ _run_onboarding() {
     # Step 4 (§27.2.4): Optional update checks (default off).
     if [[ ${step} -le 4 ]]; then
         _onboarding_set_step 4
+        local old_check_updates="${DEVILS_MINIOS_CONFIG[check_updates]:-false}"
         if _confirm "Enable update checks"; then
             DEVILS_MINIOS_CONFIG[check_updates]=true
         else
             DEVILS_MINIOS_CONFIG[check_updates]=false
         fi
-        save_config
+        if ! save_config; then
+            DEVILS_MINIOS_CONFIG[check_updates]="${old_check_updates}"
+            _error "E900" "Onboarding could not save update-check preference" 0
+            return 1
+        fi
     fi
 
     # Step 5 (§27.2.5): Optional theme and banner (defaults offered).
@@ -98,21 +103,26 @@ _run_onboarding() {
         _onboarding_set_step 5
         local theme banner
         theme="$(_prompt_default 'Theme (dracula/nord/solarized/gruvbox)' 'dracula')"
-        apply_theme "${theme}" || true
+        apply_theme "${theme}" || return 1
         banner="$(_prompt_default 'Banner (devil/minimal/retro/cyber/simple)' 'devil')"
-        set_banner "${banner}" || true
+        set_banner "${banner}" || return 1
     fi
 
     # Step 6 (§27.2.6): Optional auto_launch (default off; explicit opt-in).
     if [[ ${step} -le 6 ]]; then
         _onboarding_set_step 6
         # shellcheck disable=SC2034  # DEVILS_MINIOS_CONFIG is read by save_config (core_config.sh)
+        local old_auto_launch="${DEVILS_MINIOS_CONFIG[auto_launch]:-false}"
         if _confirm "Enable auto_launch (resume last workflow on bare invocation)"; then
             DEVILS_MINIOS_CONFIG[auto_launch]=true
         else
             DEVILS_MINIOS_CONFIG[auto_launch]=false
         fi
-        save_config
+        if ! save_config; then
+            DEVILS_MINIOS_CONFIG[auto_launch]="${old_auto_launch}"
+            _error "E900" "Onboarding could not save auto-launch preference" 0
+            return 1
+        fi
     fi
 
     # Step 7 (§27.2.7): Optional auto-start (default off; explicit opt-in).

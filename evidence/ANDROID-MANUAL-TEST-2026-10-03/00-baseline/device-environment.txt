@@ -1,0 +1,77 @@
+timestamp=2026-10-03T20:17:05+05:30
+android_release=17
+android_api=37
+android_codename=REL
+device_model=moto g57 power
+manufacturer=motorola
+cpu_abi=arm64-v8a
+cpu_abi2=arm64-v8a
+uname=Linux localhost 6.6.118-android15-8-gbf8cd367de7a-ab15314822-4k #1 SMP PREEMPT Wed Apr 29 02:03:19 UTC 2026 aarch64 Android
+machine=aarch64
+bash_version=5.3.20(1)-release
+prefix=/data/data/com.termux/files/usr
+home=/data/data/com.termux/files/home
+term=xterm-256color
+
+termux_info:
+Termux Variables:
+TERMUX_APP_PACKAGE_MANAGER=apt
+TERMUX_APP__APK_FILE=/data/app/~~2LKyPzbrth7XeBGrALbO8g==/com.termux-sGa2u-wbYaH6ELjVRu5TTw==/base.apk
+TERMUX_APP__APK_RELEASE=F_DROID
+TERMUX_APP__APP_VERSION_CODE=1022
+TERMUX_APP__APP_VERSION_NAME=0.119.0-beta.3
+TERMUX_APP__DATA_DIR=/data/user/0/com.termux
+TERMUX_APP__IS_DEBUGGABLE_BUILD=false
+TERMUX_APP__IS_INSTALLED_ON_EXTERNAL_STORAGE=false
+TERMUX_APP__LEGACY_DATA_DIR=/data/data/com.termux
+TERMUX_APP__PACKAGE_NAME=com.termux
+TERMUX_APP__PID=10125
+TERMUX_APP__SE_FILE_CONTEXT=u:object_r:app_data_file:s0:c50,c258,c512,c768
+TERMUX_APP__SE_INFO=default:targetSdkVersion=28:complete
+TERMUX_APP__TARGET_SDK=28
+TERMUX_VERSION=0.119.0-beta.3
+TERMUX__APPS_DIR=/data/user/0/com.termux/termux/apps
+TERMUX__HOME=/data/data/com.termux/files/home
+TERMUX__PREFIX=/data/data/com.termux/files/usr
+TERMUX__ROOTFS_DIR=/data/data/com.termux/files
+TERMUX__SE_PROCESS_CONTEXT=u:r:untrusted_app_27:s0:c50,c258,c512,c768
+TERMUX__UID=10562
+TERMUX__USER_ID=0
+Packages CPU architecture:
+aarch64
+Subscribed repositories:
+# sources.list
+deb https://mirror.bouwhuis.network/termux/termux-main stable main
+Updatable packages:
+libresolv-wrapper/stable 1.1.8 aarch64 [upgradable from: 1.1.7-6]
+termux-tools version:
+1.45.0
+Android version:
+17
+Kernel build information:
+Linux localhost 6.6.118-android15-8-gbf8cd367de7a-ab15314822-4k #1 SMP PREEMPT Wed Apr 29 02:03:19 UTC 2026 aarch64 Android
+Device manufacturer:
+motorola
+Device model:
+moto g57 power
+Supported ABIs:
+SUPPORTED_ABIS: arm64-v8a
+SUPPORTED_32_BIT_ABIS: 
+SUPPORTED_64_BIT_ABIS: arm64-v8a
+LD Variables:
+LD_LIBRARY_PATH=
+LD_PRELOAD=/data/data/com.termux/files/usr/lib/libtermux-exec-ld-preload.so
+
+capabilities:
+bash                            FOUND: /data/data/com.termux/files/usr/bin/bash
+git                             FOUND: /data/data/com.termux/files/usr/bin/git
+curl                            FOUND: /data/data/com.termux/files/usr/bin/curl
+sha256sum                       FOUND: /data/data/com.termux/files/usr/bin/sha256sum
+pkg                             FOUND: /data/data/com.termux/files/usr/bin/pkg
+proot-distro                    FOUND: /data/data/com.termux/files/usr/bin/proot-distro
+adb                             NOT_FOUND
+fastboot                        NOT_FOUND
+termux-api                      NOT_FOUND
+termux-battery-status           NOT_FOUND
+termux-wifi-connectioninfo      NOT_FOUND
+tput                            NOT_FOUND

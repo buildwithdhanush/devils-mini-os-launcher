@@ -58,6 +58,22 @@ out="$(run_module "${SBOX}" "workspace" '
 ')"
 assert_contains "workspace_menu is defined" "${out}" "menu=ok"
 
+section "empty workspace list communicates that there are no workspaces"
+out="$(run_module "${SBOX}" "workspace" '
+    mkdir -p "${DEVILS_MINIOS_WORKSPACE_ROOT}"
+    _workspace_list
+')"
+assert_contains "empty workspace listing prints a helpful empty-state message" "${out}" "No workspaces found."
+
+section "workspace listing excludes symlinked directories"
+out="$(run_module "${SBOX}" "workspace" '
+    mkdir -p "${DEVILS_MINIOS_WORKSPACE_ROOT}/real-workspace"
+    ln -s "${DEVILS_MINIOS_WORKSPACE_ROOT}/real-workspace" "${DEVILS_MINIOS_WORKSPACE_ROOT}/linked-workspace"
+    _workspace_list
+')"
+assert_contains "real workspace is listed" "${out}" "real-workspace"
+assert_not_contains "symlinked directory is not listed as a workspace" "${out}" "linked-workspace"
+
 section "PRD-22.1-07: validate_path() exports the resolved path when a base_dir is given"
 out="$(run_core "${SBOX}" '
     want="${HOME}/devils-minios/workspaces/ok-project"

@@ -1,0 +1,17 @@
+timestamp=2026-10-03T19:53:16+05:30
+android_release=17
+android_api=37
+cpu_abi=arm64-v8a
+kernel_arch=aarch64
+bash_version=5.3.20(1)-release
+prefix=/data/data/com.termux/files/usr
+termux_apk_release=unset
+term=xterm-256color
+
+commands:
+/data/data/com.termux/files/usr/bin/bash
+/data/data/com.termux/files/usr/bin/git
+/data/data/com.termux/files/usr/bin/curl
+/data/data/com.termux/files/usr/bin/sha256sum
+/data/data/com.termux/files/usr/bin/proot-distro
+/data/data/com.termux/files/usr/bin/pkg

@@ -1,0 +1,496 @@
+### test/test_security.sh
+
+-- assert_execution_path_allowed: traversal + external storage --
+  [PASS] internal path execution is allowed
+  [PASS] external storage (/sdcard) execution is blocked
+  [PASS] external storage (/storage/emulated) execution is blocked
+  [PASS] path traversal is blocked for execution
+
+-- execute_structured(): allowlisted executors only --
+  [PASS] allowlisted executor (true) runs
+  [PASS] non-allowlisted executor (sh) is rejected
+
+-- execute_structured(): arrays only, one args[] element = one argv element (PRD-23.1-02, §23.1) --
+  [PASS] an args[] element containing a space is delivered as ONE argv element, not split (no re-parsing/interpolation)
+  [PASS] first structured argument arrives intact
+  [PASS] second structured argument arrives intact
+  [PASS] non-allowlisted executor (python3) is rejected
+
+-- execute_structured(): shell metacharacter rejection in action/args --
+  [PASS] clean action string is accepted
+  [PASS] semicolon in action is rejected
+  [PASS] clean argument is accepted
+  [PASS] command-substitution argument is rejected
+  [PASS] backtick argument is rejected
+  [PASS] pipe argument is rejected
+  [PASS] ampersand argument is rejected
+  [PASS] redirect argument is rejected
+
+-- _dangerous_arguments_rejected(): rm -rf / and dd/mkfs --
+  [PASS] rm -r (no -f) on a normal path is not blocked by this guard
+  [PASS] rm -rf on a normal, non-root path is permitted
+  [PASS] rm -rf / is rejected
+  [PASS] rm -rf /* is rejected
+  [PASS] dd is always rejected by execute_structured's own denylist
+  [PASS] mkfs* is always rejected
+
+-- Rootless policy: no privilege-escalation executor is allowlisted --
+  [PASS] su is never allowlisted for execution
+  [PASS] sudo is never allowlisted for execution
+  [PASS] doas is never allowlisted for execution
+
+-- Confirmation gates: _confirm() semantics --
+  [PASS] _confirm accepts y with status 0
+  [PASS] _confirm rejects n with non-zero status
+  [PASS] _confirm rejects empty input
+  [PASS] _confirm rejects garbage input
+
+-- Forbidden-token rejection: install_target/package_name shell metacharacters (§18.2/§18.3 schema load) --
+  [PASS] install_target with shell metacharacters is rejected at schema validation
+  [PASS] clean install_target passes schema validation
+  [PASS] termux package_name with shell metacharacters is rejected
+  [PASS] clean termux package_name passes
+
+-- GitHub field validation: script source rejected, unpinned ref rejected --
+  [PASS] install_source=script is rejected at schema validation (removed source)
+  [PASS] GitHub ref set to a branch name (not pinned) is rejected
+  [PASS] GitHub ref pinned to a SemVer tag is accepted
+  [PASS] non-hex/non-64-char sha256 is rejected
+
+-- install_github_artifact(): ref + checksum grammar enforced before any network use --
+  [PASS] unpinned branch ref is rejected (non-zero exit)
+  [PASS] malformed repository field is rejected
+  [PASS] malformed checksum is rejected
+
+-- Malformed startup_binary rejected at schema load (§18.4) --
+  [PASS] desktop record with metacharacters in startup_binary field is rejected
+  [PASS] generate_xstartup never accepts a non-allowlisted binary
+
+-- §23.0/§23.1 reconciliation: executor enum is trimmed to actually-dispatched tools --
+  [PASS] mkdir is not in the executor enum (never dispatched via execute_structured)
+  [PASS] cat is not in the executor enum
+  [PASS] ls is not in the executor enum
+  [PASS] find is not in the executor enum
+  [PASS] df is not in the executor enum
+  [PASS] du is not in the executor enum
+  [PASS] date is not in the executor enum
+  [PASS] uname is not in the executor enum
+  [PASS] getprop is not in the executor enum
+  [PASS] termux-battery-status is not in the executor enum
+  [PASS] chmod is not in the executor enum (always called directly on trusted paths)
+
+-- §23.0/§23.1: deterministic per-(executor,action) allowlist — E422 on unlisted action --
+  [PASS] pkg install is an allowlisted action (§23.0)
+  [PASS] pkg remove is NOT an allowlisted action
+  [PASS] pkg update is an allowlisted §13.13 extension action
+  [PASS] pkg upgrade is an allowlisted §13.13 extension action
+  [PASS] pkg list-upgradable is an allowlisted §13.13 extension action
+  [PASS] tar -xzf (extract) is allowlisted per §23.0
+  [PASS] tar -czf (create) is an allowlisted §32.1/§13.9 extension action
+  [PASS] tar --delete is NOT an allowlisted action
+  [PASS] git clone is an allowlisted action (§23.0)
+  [PASS] git ls-remote is an allowlisted §30.6 extension action
+  [PASS] git push is NOT an allowlisted action
+
+-- §23.0/§23.1: rejected actions never reach the executor (E420-E429 before dispatch) --
+  [PASS] pkg remove is rejected before dispatch (E420-E429)
+  [PASS] tar --delete is rejected before dispatch (E420-E429)
+  [PASS] git push is rejected before dispatch (E420-E429)
+  [PASS] rm -r (not -rf/-f) is rejected before dispatch (E420-E429)
+  [PASS] curl -o (not -fL/-fsSL) is rejected before dispatch (E420-E429)
+
+-- §23.3: install_github_artifact() checksums the download via execute_structured(), not a raw subprocess call --
+  [PASS] install_github_artifact is defined
+  [PASS] checksum of downloaded artifact goes through execute_structured (§23.1 centralization)
+  [PASS] no raw, uncentralized sha256sum subprocess call remains in install_github_artifact
+
+-- §48.2: execute_structured() rejections use the reserved E420-E429 range, not E401/E402 --
+  [PASS] unallowlisted executor is reported as E420, not E401 (E401 = --uninstall outside IDLE)
+  [PASS] unallowlisted action is reported as E422, not E402 (E402 = unknown startup_binary)
+  [PASS] execute_structured never reports E401 (reserved elsewhere in §48.2)
+
+-- §48.2: validate_path() failures report the correct E430-E439 sub-code per failed step --
+  [PASS] empty path is reported as E430 (lexical)
+  [PASS] '..' segment is reported as E431 (traversal)
+  [PASS] path outside allowed_root is reported as E432 (root-containment)
+  [PASS] a valid path still succeeds (rc 0)
+
+-- §23.0-05: per-executor timeout/env/cwd/stdin policy exists and is applied --
+  [PASS] execute_structured applies a per-executor timeout map (§23.0-05)
+  [PASS] execute_structured closes stdin for non-interactive dispatches
+  [PASS] execute_structured retains a neutral cwd helper for ordinary non-interactive dispatches
+  [PASS] execute_structured distinguishes interactive proot-distro login
+  [PASS] every allowlisted executor has a timeout policy entry
+  [PASS] policy wrapping preserves normal exit-status passthrough
+
+-- §23.0-05: sha256sum manifest checks preserve the caller-selected working directory --
+  [PASS] sha256sum manifest check succeeds from the manifest directory
+
+-- §23.0-05: interactive proot-distro login detection is exempt from timeout/stdin, batch calls are not --
+  [PASS] plain proot-distro login (no --) is classified interactive
+  [PASS] proot-distro login with a -- batch command is classified non-interactive
+  [PASS] non-proot-distro executors are always classified non-interactive
+
+-- §22.1 step 6: _reject_symlink_destination() unit behavior --
+  [PASS] an existing symlink destination is rejected
+  [PASS] rejection is classified as the symlink-policy step
+  [PASS] an existing real file destination is allowed (overwrite is the caller's own concern, not a symlink-redirection risk)
+  [PASS] a nonexistent destination is allowed (nothing to redirect through yet)
+
+-- §43.3 / §18.3 / §48 E404: install_github_artifact() input validation and checksum mismatch --
+  [PASS] invalid repository rejected (status 2)
+  [PASS] unpinned ref (branch name) rejected (status 2)
+  [PASS] non-SHA-256 checksum field rejected (status 2)
+  [PASS] checksum mismatch aborts (status 2)
+  [PASS] checksum mismatch is reported as E404
+  [PASS] checksum mismatch leaves no partial artifact
+  [PASS] matching checksum installs (status 0)
+  [PASS] matching checksum leaves the artifact in place
+
+-- §43.3 / §18.4 / §48 E402 E403: run_desktop_startup() rejects unknown binary and shell-metacharacter args --
+  [PASS] unknown startup binary rejected (status 2)
+  [PASS] unknown startup binary reported as E402
+  [PASS] startup arg containing ';' rejected before execution (status 2)
+  [PASS] startup arg containing command substitution rejected (status 2)
+  [PASS] rejected startup args are reported as E403
+
+-- §48.2 E203/E404 semantics: E203 only for 'rootfs not installed'; E404 only for checksum-verification failure --
+  [PASS] unknown distro is not reported as E203 (E203 = rootfs not installed only)
+  [PASS] distro with no installed rootfs is reported as E203
+  [PASS] invalid GitHub repository argument is not reported as E404 (E404 = checksum mismatch only)
+
+-- §23.4/§43.3: curl|sh and wget|sh pipelines cannot be constructed through execute_structured() (negative verification) --
+  [PASS] curl_pipe_url: rc was captured
+  [PASS] curl_pipe_url: pipeline/non-allowlisted form is rejected (nonzero)
+  [PASS] curl_pipe_arg: rc was captured
+  [PASS] curl_pipe_arg: pipeline/non-allowlisted form is rejected (nonzero)
+  [PASS] curl_chain_arg: rc was captured
+  [PASS] curl_chain_arg: pipeline/non-allowlisted form is rejected (nonzero)
+  [PASS] wget: rc was captured
+  [PASS] wget: pipeline/non-allowlisted form is rejected (nonzero)
+  [PASS] sh_c: rc was captured
+  [PASS] sh_c: pipeline/non-allowlisted form is rejected (nonzero)
+  [PASS] bash_c: rc was captured
+  [PASS] bash_c: pipeline/non-allowlisted form is rejected (nonzero)
+
+-- PRD §48.2 error-code registry: no unregistered code may be introduced --
+  [PASS] every E### code in executable source is registered or on the documented pending list
+  [PASS] E999 (unregistered) does not appear in executable source
+  [PASS] _error() falls back to registered E900, not an invented code
+  [PASS] E400 appears only at registered state/CLI call sites
+  [PASS] legacy unregistered E100/E101/E102/E104/E105/E300/E301/E500 are absent from executable source
+
+-- PRD §26.5 / §33.1: Safe Mode repair checks persistence and post-validation before IDLE --
+  [PASS] Safe Mode state repair checks save_state and validate_state before IDLE
+  [PASS] Safe Mode configuration repair checks save_config and validate_config before IDLE
+
+-- PRD §37 / §45.1 / §51 / §52: governance, acceptance and dependency documentation are structurally complete --
+  [PASS] §37 traceability has owner fields
+  [PASS] §45.1 critical workflow matrix is present
+  [PASS] §51 private vulnerability reporting is documented
+  [PASS] §51 acknowledgement target is documented
+  [PASS] §52 optional dependency Termux:API is documented
+  [PASS] §52 optional dependency Termux:Boot is documented
+  [PASS] §52 proot-distro dependency is documented
+
+test_security.sh: 137 run, 137 passed, 0 failed
+### test/test_utils.sh
+
+-- _is_valid_key --
+  [PASS] _is_valid_key finds a matching candidate
+  [PASS] _is_valid_key rejects a non-matching candidate
+
+-- _trim --
+  [PASS] _trim strips leading/trailing whitespace
+  [PASS] _trim leaves unpadded strings alone
+  [PASS] _trim handles empty string
+
+-- _is_int / _is_bool --
+  [PASS] _is_int accepts a positive integer
+  [PASS] _is_int rejects a negative number (unsigned-only grammar)
+  [PASS] _is_int rejects a non-numeric string
+  [PASS] _is_int rejects empty string
+  [PASS] _is_bool accepts 'true'
+  [PASS] _is_bool accepts 'false'
+  [PASS] _is_bool rejects 'yes'
+
+-- _has_command --
+  [PASS] _has_command finds bash on PATH
+  [PASS] _has_command reports missing for a bogus command
+
+-- sanitize_input --
+  [PASS] sanitize_input strips control characters
+  [PASS] sanitize_input truncates to max_length
+
+-- _validate_no_metacharacters (denylist grammar, §23.1) --
+  [PASS] safe value passes metacharacter validation
+  [PASS] no dangerous token is ever accepted
+
+-- validate_path (traversal + base-dir confinement) --
+  [PASS] validate_path accepts a plain relative path with no base dir
+  [PASS] validate_path rejects .. traversal
+  [PASS] validate_path rejects double-slash paths
+  [PASS] validate_path accepts a path confined to base_dir
+  [PASS] validate_path rejects a path escaping base_dir
+
+-- validate_path: segment-based .. rejection (§22.1 step 2) does not false-positive on literal filenames --
+  [PASS] a filename merely containing the substring .. (not a .. segment) is not falsely rejected
+  [PASS] same, confined to a base_dir, is still accepted
+  [PASS] an actual .. path segment is still rejected even inside a base_dir
+
+-- validate_path: nonexistent-parent containment is enforced via resolution, not skipped --
+  [PASS] a nonexistent-parent path that is still lexically inside base_dir is accepted
+  [PASS] a nonexistent-parent path outside base_dir is rejected, not silently allowed
+
+-- is_external_storage_path --
+  [PASS] /sdcard paths are classified external
+  [PASS] /storage/emulated paths are classified external
+  [PASS] HOME paths are classified internal
+
+-- PRD-12-01/02: exactly 14 modules, no future_plans.sh --
+  [PASS] PRD-12-01: exactly 14 files under modules/
+  [PASS] PRD-12-02: no future_plans file exists anywhere
+  [PASS] PRD-12-02: no source references future_plans
+
+-- §13.1 detect_terminal_width / detect_termux_source / warn_play_store / warn_proot_limits --
+  [PASS] detect_terminal_width: >=60 columns -> full
+  [PASS] detect_terminal_width: 40-59 columns -> compact
+  [PASS] detect_terminal_width: <40 columns -> minimal
+  [PASS] detect_terminal_width uses tput fallback
+  [PASS] detect_terminal_width falls back to 80
+  [PASS] detect_termux_source: github build
+  [PASS] detect_termux_source: f-droid build
+  [PASS] detect_termux_source: play-store build
+
+-- PRD-19.1-001: per-mode UI features (box drawing / banner / label length) --
+  [PASS] Full mode draws a box (top-left corner glyph present)
+  [PASS] Full mode shows the full module label
+  [PASS] Compact mode does NOT draw a box (no box-drawing glyphs)
+  [PASS] Compact mode still shows the full module label
+  [PASS] Minimal mode does NOT draw a box
+  [PASS] Minimal mode does NOT show the banner (ASCII art)
+  [PASS] Minimal mode uses short module keys, not the full label
+  [PASS] Minimal mode omits the long descriptive label
+  [PASS] detect_termux_source: $PREFIX f-droid inference (PRD-35.1-001)
+  [PASS] detect_termux_source: $PREFIX play-store inference (PRD-35.1-001)
+  [PASS] detect_termux_source: unrecognised $PREFIX falls back to unknown (PRD-35.1-001)
+  [PASS] warn_play_store: warns for a Play Store build
+  [PASS] warn_play_store: silent for an F-Droid build
+  [PASS] warn_proot_limits: states proot is not kernel virtualization
+
+-- §13.1 draw_box_top / draw_box_line / draw_box_bottom --
+  [PASS] draw_box_*: emits exactly three lines
+  [PASS] draw_box_line: renders its text between side glyphs
+  [PASS] draw_box_top: uses the corner glyphs
+  [PASS] draw_box_bottom: uses the corner glyphs
+
+-- §13.1 apply_theme / set_banner / error_handler / check_storage_threshold --
+  [PASS] apply_theme: unknown theme rejected with status 2
+  [PASS] apply_theme: valid theme is applied
+  [PASS] set_banner: unknown banner rejected with status 2
+  [PASS] set_banner: valid banner is applied
+  [PASS] error_handler: defaults to E900
+  [PASS] error_handler: honors a supplied code and message
+  [PASS] error_handler: returns status 1
+  [PASS] check_storage_threshold: insufficient storage logs E603
+  [PASS] check_storage_threshold: insufficient storage returns 3
+  [PASS] check_storage_threshold: returns 0 when space suffices
+
+-- §25.1 / §43.3 battery gate: <=9% block, 10-20% inclusive confirm, >=21% continue --
+  [PASS] battery 0% is blocked (status 3), no confirmation offered
+  [PASS] battery 9% is blocked (status 3), boundary inclusive
+  [PASS] battery 10% requires confirmation (lower inclusive bound)
+  [PASS] battery 20% requires confirmation (upper inclusive bound)
+  [PASS] battery 21% continues with no confirmation
+  [PASS] battery 100% continues with no confirmation
+  [PASS] declined low-battery confirmation returns status 4 (user abort)
+
+-- §25.2 / §43.3 Termux:API absent: battery gate fails open with exactly one WARN per launch --
+  [PASS] no Termux:API: first gate call proceeds (status 0, no hard block)
+  [PASS] no Termux:API: second gate call proceeds (status 0)
+  [PASS] exactly one 'battery level unavailable; proceeding' WARN per launch
+  [PASS] WARN text is the message itself, not misplaced into the code field
+
+-- §25.1 / §43.3 storage rule: allow iff available >= required + 100 MB safety margin (exact boundary) --
+  [PASS] safety_margin_bytes is the fixed 104,857,600 constant
+  [PASS] available == required + margin is allowed (status 0)
+  [PASS] available one byte short of required + margin is rejected (status 3)
+  [PASS] per-operation fixed defaults: distro 1 GiB, desktop 300 MB, app 100 MB
+
+-- §13.1 restore_state_from_backup / trigger_safe_mode / show_banner / run_desktop_startup --
+  [PASS] banner version source is non-empty
+  [PASS] restore_state_from_backup: valid state.bak is restored (status 0)
+  [PASS] restore_state_from_backup: restoration logs E406
+  [PASS] restore_state_from_backup: absent backup returns status 1
+  [PASS] restore_state_from_backup: absent backup logs E405
+  [PASS] trigger_safe_mode: shows the Safe Mode banner
+  [PASS] trigger_safe_mode: shows the supplied reason
+  [PASS] trigger_safe_mode: repair-config option (2) returns 0 and leaves state IDLE
+  [PASS] show_banner: minimal UI mode prints nothing
+  [PASS] show_banner: simple banner carries the version
+  [PASS] show_banner: minimal banner
+  [PASS] show_banner: cyber banner
+  [PASS] show_banner: retro banner
+  [PASS] run_desktop_startup: non-allowlisted startup_binary rejected (status 2)
+  [PASS] run_desktop_startup: unknown distro rejected (status 2)
+  [PASS] run_desktop_startup: missing rootfs returns status 3
+  [PASS] run_desktop_startup: metacharacter arg token rejected (status 2)
+
+-- §43.4 static validation: syntax, size limits, structure --
+  [PASS] §43.4: at least 46 shell files were scanned
+  [PASS] §43.4: every .sh file passes bash -n
+  [PASS] §43.4: every .sh file is <500 lines (run_all.sh exempt)
+  [PASS] §43.4: exactly 19 mandatory test files
+  [PASS] §43.4: no plugins directory
+  [PASS] §43.4: no compiled/foreign-runtime launcher files
+  [PASS] §43.4: install.sh is <500 lines
+
+-- PRD-17.5-001: all 11 persisted defaults are exact --
+  [PASS] default config_version
+  [PASS] default theme
+  [PASS] default banner
+  [PASS] default banner_animation
+  [PASS] default auto_launch
+  [PASS] default health_check_interval
+  [PASS] default log_level
+  [PASS] default check_updates
+  [PASS] default language
+  [PASS] default network_timeout
+  [PASS] default network_retries
+
+-- §43.4 static validation: forbidden constructs (§23 no dynamic shell evaluation, §4 no curl|bash) --
+  [PASS] §43.4: no 'eval' in launcher/installer sources
+  [PASS] §43.4: no 'sh -c' / 'bash -c' in launcher/installer sources
+  [PASS] §43.4: no curl|bash / wget|bash pipelines in sources
+  [PASS] §43.4: no sudo/su privilege escalation in sources
+
+-- §43.4 static validation: catalogs, version, docs, manifest --
+  [PASS] §18.2/§43.4: proot_apps.db has exactly 40 records
+  [PASS] §18.2/§43.4: every proot_apps.db record has exactly 7 fields
+  [PASS] §18.2/§43.4: proot_apps.db represents exactly 13 categories
+  [PASS] §21/§43.4: installer and launcher versions agree
+  [PASS] §50/§43.4: all required documentation files exist
+  [PASS] §43.5.2: traceability matrix has exactly 13 required columns
+  [PASS] §43.5.2: traceability matrix contains Rationale column
+  [PASS] §43.5.2: traceability matrix contains Accountable Owner column
+  [PASS] §43.5.2: traceability matrix contains Approval Authority column
+  [PASS] §43.5.2: every requirement row has exactly 13 columns
+  [PASS] §43.5.2: every requirement row has populated owner fields
+  [PASS] §30.2/§43.4: every path listed in SHA256SUMS exists
+
+-- PRD §22.1 step 1/5: empty and over-length paths rejected; final component . / .. rejected (fix pass 3c) --
+  [PASS] empty path rejected at the lexical step
+  [PASS] path longer than 4096 rejected at the lexical step
+  [PASS] a normal-length path is accepted
+  [PASS] final component '.' rejected at the final-component step
+  [PASS] a nonexistent, well-formed final component is accepted
+
+-- PRD §26 step 2 / §26.5: crash flag content, and flag vs crash-window independence (fix pass 3c) --
+  [PASS] first serious crash counts 1 in the window
+  [PASS] crash flag contains only created_at=<ISO-8601 UTC>
+  [PASS] crash flag is written atomically (no temp file left)
+  [PASS] clearing the flag removes only the flag
+  [PASS] clearing the flag preserves the crash window
+  [PASS] a later crash still sees the earlier window entry (count 2)
+  [PASS] resetting the crash window does not clear the flag
+  [PASS] crash flag timestamp is strict ISO-8601 UTC
+
+-- PRD §13.8 / §25 no background health daemon; §30.5 integrity-not-authenticity statement (fix pass 3c) --
+  [PASS] health_check/state/platform never spawn a background process
+  [PASS] docs/SECURITY.md states SHA-256 gives integrity only, not authenticity
+
+-- §13 public function contracts: every public function has name/args/returns/side-effects documentation --
+  [PASS] §13: every public function has a contract comment
+
+test_utils.sh: 152 run, 152 passed, 0 failed
+### test/test_linux_env.sh
+
+-- Distro catalog loads and matches by id or proot_id --
+  [PASS] get_distro_record finds ubuntu by catalog id
+  [PASS] ubuntu record's proot_id field is 'ubuntu'
+  [PASS] get_distro_record matches by proot_id fallback
+  [PASS] get_distro_record reports missing for unknown distro
+
+-- Fixed 8 Tier-1 desktops (§42, §46) --
+  [PASS] exactly 8 desktop records load
+  [PASS] desktop 'xfce4' is present in the catalog
+  [PASS] desktop 'lxqt' is present in the catalog
+  [PASS] desktop 'lxde' is present in the catalog
+  [PASS] desktop 'mate' is present in the catalog
+  [PASS] desktop 'i3wm' is present in the catalog
+  [PASS] desktop 'openbox' is present in the catalog
+  [PASS] desktop 'fluxbox' is present in the catalog
+  [PASS] desktop 'jwm' is present in the catalog
+
+-- get_desktop_record() --
+  [PASS] get_desktop_record finds xfce4
+  [PASS] xfce4 startup_binary is startxfce4
+  [PASS] unsupported desktop (gnome) is rejected/absent
+
+-- generate_xstartup: success path (distro-arg rootfs selection) --
+  [PASS] generate_xstartup succeeds for an installed distro + allowlisted binary
+  [PASS] generated xstartup invokes the requested startup binary
+
+-- generate_xstartup: distro selects the correct rootfs path --
+  [PASS] xstartup is written under the selected distro's own rootfs
+
+-- generate_xstartup: rejects non-allowlisted startup_binary --
+  [PASS] generate_xstartup rejects a startup_binary outside the allowlist
+
+-- generate_xstartup: rejects when rootfs is not installed --
+  [PASS] generate_xstartup rejects an uninstalled distro rootfs
+
+-- generate_xstartup: rejects unknown distro --
+  [PASS] generate_xstartup rejects an unknown distro id
+
+-- generate_xstartup: startup_args tokens validated and %q-escaped --
+  [PASS] valid comma-separated startup_args are accepted
+  [PASS] startup_args tokens appear in the generated xstartup
+  [PASS] startup_args containing shell metacharacters are rejected
+
+-- Systemd-dependent desktop warning --
+  [PASS] systemd-dependent desktops trigger a warning before continuing
+
+-- E440: systemd-dependent desktop declined by user -> exit 4, E440 logged at INFO --
+  [PASS] E440: declining the systemd acknowledgement logs the registered code (INFO, in launcher.log)
+  [PASS] E440: the logged entry carries the E440 code and INFO level
+  [PASS] E440: declined acknowledgement returns exit status 4
+  [PASS] E440: a decline is INFO, not an ERROR-level entry
+
+-- systemd_flag=true: acknowledge-then-proceed path continues past the gate (PRD §35.3) --
+  [PASS] acknowledging the systemd warning does not return the declined exit status (4)
+  [PASS] acknowledging the systemd warning logs continuation and proceeds to the next step (distro selection)
+
+-- warn_proot_limits: all five limitation classes are present (PRD §35.3) --
+  [PASS] warn_proot_limits documents kernel limitations
+  [PASS] warn_proot_limits documents systemd limitations
+  [PASS] warn_proot_limits documents GUI limitations
+  [PASS] warn_proot_limits documents device access limitations
+  [PASS] warn_proot_limits documents root limitations
+
+-- Malformed database record handling (§18, §41.1) --
+  [PASS] malformed record is counted, not silently ignored
+  [PASS] well-formed records still load when malformed count is within the 5% tolerance
+
+-- Malformed record is WARN-logged with the offending line number (§18, §41.1) --
+  [PASS] a WARN log entry is written for the malformed record
+
+-- Malformed-record tolerance exceeded -> safe degradation (§41.1) --
+  [PASS] exceeding the malformed-record tolerance degrades to an empty catalog rather than a crash
+  [PASS] exceeding tolerance logs E105 safe-degradation evidence
+
+-- Missing catalog disables only the dependent feature (§41.1) --
+  [PASS] missing catalog yields an empty dependent catalog
+  [PASS] missing catalog does not disable unrelated core/module functionality
+
+-- run_desktop_startup: allowlisted binary dispatches via execute_structured (PRD-23.2-01, §23.2) --
+  [PASS] run_desktop_startup dispatches via execute_structured(executor=proot-distro, action=login)
+  [PASS] run_desktop_startup with an allowlisted binary succeeds
+  [PASS] run_desktop_startup rejects a non-allowlisted startup_binary (E402)
+  [PASS] run_desktop_startup refuses to launch when the distro rootfs is not installed
+
+-- Proot-distro availability and offline installation gate --
+  [PASS] missing proot-distro is rejected without crashing
+  [PASS] offline proot-distro installation is rejected before package execution
+
+test_linux_env.sh: 50 run, 50 passed, 0 failed

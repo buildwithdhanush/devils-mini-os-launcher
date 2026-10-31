@@ -6,7 +6,24 @@ and version numbers follow [Semantic Versioning 2.0.0](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Fixed `test/run_all.sh` to treat a non-zero test-process exit as a failed test even when the child printed a passing-looking assertion summary. Added a regression fixture to `test/test_report_generator.sh` that returns exit 23 after printing a zero-failure summary and requires the aggregate runner to fail.
+- Corrected the §43.5 traceability matrix to use all 14 fields in PRD order, normalize nonconforming requirement IDs, split the combined §23.3 requirement row into six independently traceable rows, and refresh schema/status totals. Added `test/validate_traceability.sh` and wired it into CI. Identifier normalization applies only to malformed legacy IDs; the change is recorded here rather than silently treating old spellings as valid.
+- Updated `test_utils.sh` traceability assertions from the stale 13-column layout to PRD §43.5.2’s 14 fields and corrected the owner-field indexes so the assertions inspect the three actual owner columns.
+- Hardened CI static checks to run `bash -n`, ShellCheck, and the strict `<500`-line gate across every repository `.sh` file.
+- Post-repair Linux-container verification: all 19 mandatory test files passed with 918/918 assertions, including the non-zero child-exit regression. ShellCheck and supported-device release gates remain unverified.
+
+
 ### Changed
+- Refined the interactive Termux menu for portrait screens: added a large monochrome DEVILS MINI OS banner, a centered boxed menu heading, screenshot-aligned module labels, and a visible Termux-source warning beneath the banner. The display uses no hardcoded color sequences and leaves the user's Termux color palette untouched. The main-menu input prompt now reads `Choice:` and keeps Enter-to-exit behavior.
+
+### Fixed
+- Hardened interactive screen clearing by emitting the ANSI home/erase-display/erase-scrollback sequence directly instead of trusting a `tput clear` command that may succeed without clearing the active Termux screen or scrollback. Added a regression test for a successful-but-silent `tput`.
+- Fixed Workspace → List workspaces so an empty workspace root displays a helpful empty-state message instead of returning no visible output. Listing now excludes symlinked directories, with regression tests for both cases.
+- Fixed System Tools → Clear Cache feedback: successful cache removal now prints a visible confirmation and waits before the menu redraws, instead of only logging success. Also corrected path validation for custom `XDG_CACHE_HOME` values and preserved the caller's `nullglob`/`dotglob` settings. Added tests for visible feedback, the pause, and leaving sibling application caches untouched.
+
+### Changed
+- Aligned `docs/INSTALL.md` with PRD §8: generic Linux is a test environment only, not a supported runtime host. Added the required `.gitignore` and reserved `data/banners/` / `data/themes/` directories from §42. Expanded `docs/TRACEABILITY.md` to cover previously unrepresented normative sections and corrected stale state/installer evidence; the release gate remains explicitly blocked by device and performance evidence.
 - Moved the internal `core_logging.sh`, `core_platform.sh`,
   `core_security.sh`, `core_config.sh`, `core_state.sh`, `core_catalog.sh`,
   `core_ui.sh`, and `devils_self_update.sh` files out of `modules/` into a
@@ -23,6 +40,8 @@ and version numbers follow [Semantic Versioning 2.0.0](https://semver.org/).
   `source`/`cp` paths that reference them.
 
 ### Fixed
+- Fixed clean installation activation and active-manifest generation (PRD §§30.2, 30.5). The installer now copies `install.sh` into the active installation and checks every concrete staged file against the active `SHA256SUMS` instead of searching for literal wildcard strings. Generated `data/reports/` output is excluded from the runtime payload because it is test-generated evidence, not runtime data. Added assertions that a fresh install succeeds, the active manifest covers `install.sh`, and `install.sh --verify` succeeds immediately after installation.
+- Fixed `execute_structured()` working-directory handling for `sha256sum -c`: manifest verification now preserves the caller-selected directory containing `SHA256SUMS`, matching PRD §23.0-05. This prevents a false E412/CFG-TAMPER Safe Mode entry when the installed manifest is valid but the generic neutral-cwd policy would otherwise make the relative manifest path unresolvable. Added a regression test covering an actual `sha256sum -c SHA256SUMS --status` dispatch through `execute_structured()`.
 - Corrected the §14 startup sequence so persistent state/configuration are loaded and validated before the runtime context and feature modules, and session CLI overrides are applied before onboarding/dispatch.
 - Enforced `--offline` at every network-capable application/distro installation boundary covered by §15.1; local launch, backup/restore, ADB, catalogs, health checks, and startup diagnostics remain available offline.
 - Made `--debug` a real session-level DEBUG override before onboarding/dispatch without persisting `log_level=DEBUG`.

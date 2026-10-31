@@ -169,9 +169,9 @@ update_all_menu() {
         printf '%s\n' "0) Back"
         choice="$(_prompt_default 'Choice' '0')"
         case "${choice}" in
-            1) _update_all_termux; _confirm "Continue" || true ;;
-            2) _update_all_single_proot; _confirm "Continue" || true ;;
-            3) _update_all_installed_proot; _confirm "Continue" || true ;;
+            1) _update_all_termux; _pause "Press Enter to return to the menu" ;;
+            2) _update_all_single_proot; _pause "Press Enter to return to the menu" ;;
+            3) _update_all_installed_proot; _pause "Press Enter to return to the menu" ;;
             4) _update_all_toggle_dry_run; sleep 1 ;;
             0) return 0 ;;
             *) printf 'Invalid selection.\n'; sleep 1 ;;

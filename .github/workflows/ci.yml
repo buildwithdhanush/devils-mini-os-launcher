@@ -1,8 +1,8 @@
 name: Devil's Mini OS Launcher CI
 
 # PRD §43.4 — CI / Static Validation
-# Covers: Bash syntax, security scan, 19 mandatory tests, catalog/schema
-# validation, file-size constraints, checksum consistency.
+# Covers: Bash syntax, ShellCheck, traceability, security scan, 19 mandatory
+# tests, catalog/schema validation, strict file-size limits, checksum consistency.
 #
 # NOTE: This CI runner is a generic Linux (Ubuntu) environment.
 #   - It CANNOT substitute for Android/Termux hardware acceptance.
@@ -37,28 +37,27 @@ jobs:
           sudo apt-get install -y bash
           bash --version
 
-      - name: Syntax check — entry points
+      - name: Syntax check — all repository shell files
         run: |
-          bash -n install.sh
-          bash -n devils-minios.sh
+          count=0
+          while IFS= read -r -d '' file; do
+            count=$((count + 1))
+            bash -n "$file" || { echo "SYNTAX FAIL: $file"; exit 1; }
+          done < <(find . -type f -name '*.sh' -not -path './.git/*' -print0)
+          [ "$count" -gt 0 ] || { echo "FAIL: no shell scripts found"; exit 1; }
+          echo "PASS: syntax checked $count shell files"
 
-      - name: Syntax check — modules
+      - name: Install ShellCheck (PRD §43.4)
         run: |
-          for f in modules/*.sh; do
-            bash -n "$f" || { echo "SYNTAX FAIL: $f"; exit 1; }
-          done
+          sudo apt-get update -qq
+          sudo apt-get install -y shellcheck
+          shellcheck --version
 
-      - name: Syntax check — core
+      - name: ShellCheck — all repository shell files
         run: |
-          for f in core/*.sh; do
-            bash -n "$f" || { echo "SYNTAX FAIL: $f"; exit 1; }
-          done
-
-      - name: Syntax check — tests
-        run: |
-          for f in test/*.sh test/lib/*.sh; do
-            bash -n "$f" || { echo "SYNTAX FAIL: $f"; exit 1; }
-          done
+          mapfile -d '' files < <(find . -type f -name '*.sh' -not -path './.git/*' -print0)
+          [ "${#files[@]}" -gt 0 ] || { echo "FAIL: no shell scripts found"; exit 1; }
+          shellcheck "${files[@]}"
 
   # ──────────────────────────────────────────────────────────────────
   # JOB 2: Security scan — forbidden shell constructs
@@ -161,18 +160,18 @@ jobs:
           [ -f test/run_all.sh ] || { echo "FAIL: test/run_all.sh missing"; exit 1; }
           echo "PASS: test/run_all.sh present"
 
-      - name: File-size limit — no source file >500 lines (PRD §36)
+      - name: File-size limit — every .sh file must be below 500 lines (PRD §36)
         run: |
           OVER=0
-          for f in install.sh devils-minios.sh modules/*.sh core/*.sh; do
+          while IFS= read -r -d '' f; do
             LINES=$(wc -l < "$f")
-            if [ "$LINES" -gt 500 ]; then
-              echo "OVER LIMIT ($LINES lines): $f"
+            if [ "$LINES" -ge 500 ]; then
+              echo "OVER LIMIT ($LINES lines; must be <500): $f"
               OVER=1
             fi
-          done
+          done < <(find . -type f -name '*.sh' -not -path './.git/*' -print0)
           [ "$OVER" -eq 0 ] || exit 1
-          echo "PASS: all source files <=500 lines"
+          echo "PASS: every repository .sh file is below 500 lines"
 
       - name: Required documentation present (PRD §44)
         run: |
@@ -184,6 +183,9 @@ jobs:
           done
           [ "$MISSING" -eq 0 ] || exit 1
           echo "PASS: all required docs present"
+
+      - name: Traceability schema, IDs, owners, statuses and totals (PRD §43.5)
+        run: bash test/validate_traceability.sh
 
   # ──────────────────────────────────────────────────────────────────
   # JOB 4: Catalog / schema validation

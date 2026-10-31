@@ -78,12 +78,12 @@ log_viewer_menu() {
         printf '%s\n' "0) Exit"
         choice="$(_prompt_default 'Choice' '0')"
         case "${choice}" in
-            1) _log_viewer_view; _confirm "Continue" || true ;;
-            2) _log_viewer_filter; _confirm "Continue" || true ;;
-            3) _log_viewer_search; _confirm "Continue" || true ;;
+            1) _log_viewer_view; _pause "Press Enter to return to the menu" ;;
+            2) _log_viewer_filter; _pause "Press Enter to return to the menu" ;;
+            3) _log_viewer_search; _pause "Press Enter to return to the menu" ;;
             4) _log_viewer_tail_live ;;
             5) _log_viewer_export ;;
-            6) _log_viewer_export_sanitized; _confirm "Continue" || true ;;
+            6) _log_viewer_export_sanitized; _pause "Press Enter to return to the menu" ;;
             7) _log_viewer_clear ;;
             0) return 0 ;;
             *) printf 'Invalid selection.\n'; sleep 1 ;;

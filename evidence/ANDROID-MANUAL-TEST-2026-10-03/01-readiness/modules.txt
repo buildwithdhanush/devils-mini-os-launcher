@@ -1,0 +1,17 @@
+===== ACTIVE MODULES =====
+android_tools.sh
+core.sh
+customize.sh
+file_mgr.sh
+health_check.sh
+linux_env.sh
+log_viewer.sh
+proot_apps.sh
+settings.sh
+system_info.sh
+system_tools.sh
+termux_apps.sh
+update_all.sh
+workspace.sh
+
+module_count=14

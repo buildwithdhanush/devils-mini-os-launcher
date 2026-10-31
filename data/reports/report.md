@@ -10,21 +10,21 @@
 | Metric | Value |
 |---|---|
 | Test files run | 18 |
-| Test files passed | 18 |
-| Test files failed | 0 |
+| Test files passed | 16 |
+| Test files failed | 2 |
 | Test files missing | 0 |
-| Assertions run | 864 |
-| Assertions passed | 864 |
-| Assertions failed | 0 |
-| Overall status | PASS |
+| Assertions run | 865 |
+| Assertions passed | 853 |
+| Assertions failed | 12 |
+| Overall status | FAIL |
 
 ## Per-file results
 
 | Test file | Status | Run | Passed | Failed |
 |---|---|---|---|---|
-| test_core.sh | PASS | 130 | 130 | 0 |
+| test_core.sh | FAIL | 130 | 122 | 8 |
 | test_utils.sh | PASS | 152 | 152 | 0 |
-| test_security.sh | PASS | 136 | 136 | 0 |
+| test_security.sh | PASS | 137 | 137 | 0 |
 | test_linux_env.sh | PASS | 50 | 50 | 0 |
 | test_file_mgr.sh | PASS | 20 | 20 | 0 |
 | test_termux_apps.sh | PASS | 11 | 11 | 0 |
@@ -35,11 +35,16 @@
 | test_log_viewer.sh | PASS | 5 | 5 | 0 |
 | test_customize.sh | PASS | 14 | 14 | 0 |
 | test_system_tools.sh | PASS | 6 | 6 | 0 |
-| test_system_info.sh | PASS | 15 | 15 | 0 |
+| test_system_info.sh | FAIL | 15 | 11 | 4 |
 | test_update_all.sh | PASS | 94 | 94 | 0 |
 | test_settings.sh | PASS | 51 | 51 | 0 |
 | test_integration.sh | PASS | 100 | 100 | 0 |
 | test_install.sh | PASS | 28 | 28 | 0 |
+
+## Failed files
+
+- test_core.sh
+- test_system_info.sh
 
 ## Complete output
 

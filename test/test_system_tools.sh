@@ -20,6 +20,13 @@ out="$(run_module "${SBOX}" "system_tools" '
 ')"
 assert_contains "system_tools_menu defined" "${out}" "menu=ok"
 
+section "clear-cache menu lets the user read the result before redraw"
+if grep -Fq '_system_tools_maintenance || true; _pause "Press Enter to return to the menu"' "${DMOS_PROJECT_ROOT}/modules/system_tools.sh"; then
+    pass "clear-cache action pauses before the next menu redraw"
+else
+    fail "clear-cache action pauses before the next menu redraw"
+fi
+
 section "no unsafe blanket pkill in module"
 if grep -qE 'pkill -u|killall -9|rm -rf /' "${DMOS_PROJECT_ROOT}/modules/system_tools.sh" 2>/dev/null; then
     fail "system_tools.sh must not contain unsafe blanket kill/rm"
@@ -46,13 +53,34 @@ SBOX_CACHE="$(new_sandbox)"
 out="$(run_module "${SBOX_CACHE}" system_tools '
     mkdir -p "${DEVILS_MINIOS_CACHE_DIR}"
     printf cache > "${DEVILS_MINIOS_CACHE_DIR}/health_cache.json"
+    printf hidden > "${DEVILS_MINIOS_CACHE_DIR}/.hidden-cache-entry"
     ln -s "${HOME}" "${DEVILS_MINIOS_CACHE_DIR}/escape"
     _confirm() { return 0; }
     _system_tools_maintenance
-    printf "cache_file=%s symlink=%s\n" "$(test -e "${DEVILS_MINIOS_CACHE_DIR}/health_cache.json" && echo present || echo removed)" "$(test -L "${DEVILS_MINIOS_CACHE_DIR}/escape" && echo present || echo removed)"
+    printf "cache_file=%s hidden=%s symlink=%s\n" \
+        "$(test -e "${DEVILS_MINIOS_CACHE_DIR}/health_cache.json" && echo present || echo removed)" \
+        "$(test -e "${DEVILS_MINIOS_CACHE_DIR}/.hidden-cache-entry" && echo present || echo removed)" \
+        "$(test -L "${DEVILS_MINIOS_CACHE_DIR}/escape" && echo present || echo removed)"
 ')"
 assert_contains "cache maintenance removes regular cache entries" "${out}" "cache_file=removed"
+assert_contains "cache maintenance removes hidden cache entries" "${out}" "hidden=removed"
 assert_contains "cache maintenance removes symlink objects without following them" "${out}" "symlink=removed"
+assert_contains "cache maintenance prints a visible success message" "${out}" "Cache cleared."
+
+section "cache maintenance supports XDG_CACHE_HOME and leaves sibling data untouched"
+SBOX_XDG_CACHE="$(new_sandbox)"
+out="$(run_module "${SBOX_XDG_CACHE}" system_tools '
+    mkdir -p "${XDG_CACHE_HOME}/devils-minios" "${XDG_CACHE_HOME}/other-app"
+    printf cache > "${XDG_CACHE_HOME}/devils-minios/item"
+    printf keep > "${XDG_CACHE_HOME}/other-app/keep.txt"
+    _confirm() { return 0; }
+    _system_tools_maintenance
+    printf "launcher_cache=%s sibling_file=%s\n" \
+        "$(test -e "${XDG_CACHE_HOME}/devils-minios/item" && echo present || echo removed)" \
+        "$(test -e "${XDG_CACHE_HOME}/other-app/keep.txt" && echo present || echo removed)"
+')"
+assert_contains "custom XDG_CACHE_HOME cache is cleared successfully" "${out}" "launcher_cache=removed"
+assert_contains "clear cache leaves sibling app cache untouched" "${out}" "sibling_file=present"
 
 
 section "Backup dispatch is centralized and path-validated"

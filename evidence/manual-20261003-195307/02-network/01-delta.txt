@@ -1,0 +1,2 @@
+rx_bytes_delta=0
+tx_bytes_delta=0

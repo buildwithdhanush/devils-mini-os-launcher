@@ -64,8 +64,15 @@ _settings_edit_key() {
     value="$(_prompt_default "New value for ${key}" "${DEVILS_MINIOS_CONFIG[${key}]:-}")"
     value="$(sanitize_input "${value}" 256)"
     if _settings_validate_candidate "${key}" "${value}"; then
+        local old_value="${DEVILS_MINIOS_CONFIG[${key}]:-}"
+        local old_log_level="${DEVILS_MINIOS_LOG_LEVEL:-INFO}"
         DEVILS_MINIOS_CONFIG["${key}"]="${value}"
-        save_config
+        if ! save_config; then
+            DEVILS_MINIOS_CONFIG["${key}"]="${old_value}"
+            DEVILS_MINIOS_LOG_LEVEL="${old_log_level}"
+            _error "E900" "Configuration update was not saved; previous value restored" 0
+            return 1
+        fi
         # DEVILS_MINIOS_LOG_LEVEL is declared -g in core.sh and consumed there
         # by the logging dispatcher; this module only assigns it, so
         # ShellCheck's single-file analysis flags a false-positive here.
@@ -81,8 +88,17 @@ _settings_edit_key() {
 # Configuration reset (§33.1): persisted_config only; state untouched.
 _settings_reset_config() {
     _confirm "Reset configuration to defaults (state is not affected)" || return 0
-    load_default_config
-    save_config
+    # _copy_config_assoc snapshots/restores this array through a nameref.
+    # shellcheck disable=SC2034
+    local -A old_config=()
+    local old_log_level="${DEVILS_MINIOS_LOG_LEVEL:-INFO}"
+    _copy_config_assoc DEVILS_MINIOS_CONFIG old_config
+    if ! load_default_config || ! save_config; then
+        _copy_config_assoc old_config DEVILS_MINIOS_CONFIG
+        DEVILS_MINIOS_LOG_LEVEL="${old_log_level}"
+        _error "E900" "Configuration reset failed; previous configuration retained" 0
+        return 1
+    fi
     # DEVILS_MINIOS_LOG_LEVEL is declared -g in core.sh and consumed there
     # by the logging dispatcher; this module only assigns it, so
     # ShellCheck's single-file analysis flags a false-positive here.
@@ -187,7 +203,7 @@ settings_menu() {
         printf '%s\n' "0) Back"
         choice="$(_prompt_default 'Choice' '0')"
         case "${choice}" in
-            1) _settings_view; _confirm "Continue" || true ;;
+            1) _settings_view; _pause "Press Enter to return to the menu" ;;
             2) _settings_edit_key ;;
             3) _settings_reset_config ;;
             4) _settings_reset_state ;;

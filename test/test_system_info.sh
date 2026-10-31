@@ -49,7 +49,8 @@ section "PRD §13.12-001: system_info_menu dispatches all three read-only report
 out="$(run_module "${SBOX}" "system_info" '
     detect_platform 2>/dev/null || true
     build_runtime_context 2>/dev/null || true
-    system_info_menu >/tmp/dmos_sysinfo_out.$$ 2>&1 <<< "1
+    sysinfo_out="${HOME}/.dmos_sysinfo_out.$$"
+    system_info_menu >"${sysinfo_out}" 2>&1 <<< "1
 y
 2
 y
@@ -58,11 +59,11 @@ y
 0"
     rc=$?
     printf "menu_rc=%s\n" "${rc}"
-    grep -c "System Info" /tmp/dmos_sysinfo_out.$$ | { read -r n; printf "reentries=%s\n" "${n}"; }
-    grep -q "Architecture" /tmp/dmos_sysinfo_out.$$ && printf "showed_full_report=yes\n" || printf "showed_full_report=no\n"
-    grep -q "Filesystem detail" /tmp/dmos_sysinfo_out.$$ && printf "showed_storage_detail=yes\n" || printf "showed_storage_detail=no\n"
-    grep -q "Environment" /tmp/dmos_sysinfo_out.$$ && printf "showed_environment=yes\n" || printf "showed_environment=no\n"
-    rm -f /tmp/dmos_sysinfo_out.$$
+    grep -c "System Info" "${sysinfo_out}" | { read -r n; printf "reentries=%s\n" "${n}"; }
+    grep -q "Architecture" "${sysinfo_out}" && printf "showed_full_report=yes\n" || printf "showed_full_report=no\n"
+    grep -q "Filesystem detail" "${sysinfo_out}" && printf "showed_storage_detail=yes\n" || printf "showed_storage_detail=no\n"
+    grep -q "Environment" "${sysinfo_out}" && printf "showed_environment=yes\n" || printf "showed_environment=no\n"
+    rm -f "${sysinfo_out}"
 ')"
 assert_contains "system_info_menu returns cleanly (choice 0)" "${out}" "menu_rc=0"
 assert_contains "menu choice 1 shows the full system report" "${out}" "showed_full_report=yes"

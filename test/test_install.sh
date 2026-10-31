@@ -156,6 +156,16 @@ if [[ -f "${SBOX_REAL_INSTALL}/usr/opt/devils-minios/SHA256SUMS" ]]; then
 else
     fail "clean sandbox install creates active SHA256SUMS"
 fi
+if [[ -f "${SBOX_REAL_INSTALL}/usr/opt/devils-minios/install.sh" ]]; then
+    pass "active installation includes install.sh for PRD §30.2 manifest coverage"
+else
+    fail "active installation includes install.sh for PRD §30.2 manifest coverage"
+fi
+if grep -Fq '  ./install.sh' "${SBOX_REAL_INSTALL}/usr/opt/devils-minios/SHA256SUMS" 2>/dev/null; then
+    pass "active SHA256SUMS covers install.sh"
+else
+    fail "active SHA256SUMS covers install.sh"
+fi
 out_real_verify="$(PREFIX="${SBOX_REAL_INSTALL}/usr" HOME="${SBOX_REAL_INSTALL}/home" bash "${DMOS_PROJECT_ROOT}/install.sh" --verify 2>&1)"
 st_real_verify=$?
 assert_status "clean sandbox active installation verifies successfully" 0 "${st_real_verify}"

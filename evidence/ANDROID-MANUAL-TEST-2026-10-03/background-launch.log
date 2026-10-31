@@ -1,0 +1,26 @@
+nohup: ignoring input
+========================================
+ Devil's Mini OS Launcher
+ Android Manual Test Evidence Runner
+========================================
+timestamp=2026-10-03T20:17:05+05:30
+project_root=/data/data/com.termux/files/home/devils-mini-os-launcher-Testing
+evidence_dir=/data/data/com.termux/files/home/devils-mini-os-launcher-Testing/evidence/ANDROID-MANUAL-TEST-2026-10-03
+
+===== 00 BASELINE =====
+===== 01 READINESS =====
+===== 02 NETWORK BASELINE =====
+===== 03 AUTOMATED SUITE =====
+===== 04 CLI SMOKE =====
+===== 05 INTEGRITY =====
+===== 06 NETWORK AFTER =====
+===== 07 GENERATE MANUAL CHECKLIST =====
+===== 08 FINAL SUMMARY =====
+
+========================================
+ TEST RUN FINISHED
+========================================
+Evidence: /data/data/com.termux/files/home/devils-mini-os-launcher-Testing/evidence/ANDROID-MANUAL-TEST-2026-10-03
+Suite exit: 1
+Manual checklist: /data/data/com.termux/files/home/devils-mini-os-launcher-Testing/evidence/ANDROID-MANUAL-TEST-2026-10-03/MANUAL-CHECKLIST.md
+

@@ -1,0 +1,11 @@
+# Editor and operating-system noise
+.DS_Store
+*~
+*.swp
+*.swo
+
+# Temporary staging artifacts
+*.tmp
+*.tmp.*
+*.staging.*
+*.old.[0-9]*

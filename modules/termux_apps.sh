@@ -114,11 +114,11 @@ termux_apps_menu() {
         printf '%s\n' "0) Back"
         choice="$(_prompt_default 'Choice' '0')"
         case "${choice}" in
-            1) _termux_apps_list; _confirm "Continue" || true ;;
+            1) _termux_apps_list; _pause "Press Enter to return to the menu" ;;
             2)
                 local cat
                 cat="$(_prompt_default 'Category' 'development')"
-                _termux_apps_list "${cat}"; _confirm "Continue" || true
+                _termux_apps_list "${cat}"; _pause "Press Enter to return to the menu"
                 ;;
             3) _termux_apps_install ;;
             0) return 0 ;;

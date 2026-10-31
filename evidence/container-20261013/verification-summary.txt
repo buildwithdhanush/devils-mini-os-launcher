@@ -1,0 +1,15 @@
+Date: 2026-10-13
+Environment: generic Linux container; GNU Bash GNU bash, version 5.2.37(1)-release (x86_64-pc-linux-gnu)
+Command: bash test/run_all.sh
+Exit status: 0
+Result: Files:  19 / 19 passed;Assertions: 891 run, 891 passed, 0 failed;
+Command: sha256sum -c SHA256SUMS
+Exit status: 0
+Manifest entries: 70
+Command: bash -n over all .sh files
+Exit status: 0
+ShellCheck: NOT RUN (not installed)
+Actionlint: NOT RUN (not installed)
+Android/Termux manual acceptance: PENDING; existing 2026-10-03 device evidence records an automated-suite failure and uncompleted manual checklist
+Performance measurements per PRD §20: NOT RUN on a supported physical device
+Traceability: 240 unique 13-column rows; 197 Verified, 42 Partial, 1 Not Verified; full normative completeness audit remains open

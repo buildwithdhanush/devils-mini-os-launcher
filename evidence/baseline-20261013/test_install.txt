@@ -1,0 +1,64 @@
+
+-- install.sh exists and is bash --
+  [PASS] install.sh present
+
+-- install.sh syntax check --
+  [PASS] install.sh passes bash -n
+
+-- install.sh does not use curl|bash --
+  [PASS] install.sh has no curl|bash pattern
+
+-- installer deletion boundary: only tracked paths (§30.1) --
+  [PASS] install.sh has scoped deletion logic
+
+-- installer never rm -rf's the pre-existing install/target dir directly (§30.1) --
+  [PASS] install.sh never rm -rf's ${INSTALL_TARGET_DIR} directly
+  [PASS] install.sh renames the old installation into an installer-owned backup path before any deletion
+
+-- installer activation keeps a valid installation on mv failure --
+  [PASS] install.sh restores the backup if activation mv fails
+
+-- SHA256SUMS and --verify support --
+  [PASS] install.sh references checksum verification
+
+-- entry point exists --
+  [PASS] devils-minios.sh present
+  [PASS] devils-minios.sh passes bash -n
+
+-- installer directory check (§48.2 E601): empty vs non-empty unrecognized directory --
+  [PASS] E601 fires for an existing, non-empty, unrecognized directory
+  [PASS] E601 exits with status 1
+  [PASS] E601 does NOT fire for an existing but empty directory
+  [PASS] empty pre-existing directory proceeds with exit status 0
+
+-- install-time manifest verification (§48.2 E602): tampered/corrupt source -> exit 2 --
+  [PASS] E602 fires when the install source's SHA256SUMS fails verification
+  [PASS] E602 (source tamper) exits with status 2
+
+-- --verify manifest checks (§48.2 E602): missing/failed verification on the active installation -> exit 2 --
+  [PASS] E602 fires when --verify finds no SHA256SUMS in the active installation
+  [PASS] E602 (missing manifest) exits with status 2
+  [PASS] E602 fires when --verify's checksum comparison fails
+  [PASS] E602 (verification failure) exits with status 2
+
+-- fresh install + active-manifest verification (§30.2): verify succeeds after a clean install --
+  [FAIL] clean sandbox install exits 0
+         expected exit 0 got 2
+  [FAIL] clean sandbox install creates active SHA256SUMS
+  [FAIL] clean sandbox active installation verifies successfully
+         expected exit 0 got 2
+  [PASS] active manifest does not reference source-only test files
+
+-- PRD-22.1/30 uninstall refuses a symlinked installation directory --
+  [PASS] symlinked install directory is rejected
+  [PASS] symlink target remains untouched
+
+-- install storage gate (§48.2 E603): insufficient storage -> exit 3 --
+  [PASS] E603 fires when available storage is below the required threshold
+  [PASS] E603 exits with status 3
+
+test_install.sh: 28 run, 25 passed, 3 failed
+Failed assertions in test_install.sh:
+  - clean sandbox install exits 0
+  - clean sandbox install creates active SHA256SUMS
+  - clean sandbox active installation verifies successfully

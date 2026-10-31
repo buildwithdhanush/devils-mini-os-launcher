@@ -69,8 +69,7 @@ nuclear_reset() {
     }
     chmod 700 "${cfg}" 2>/dev/null || true
 
-    load_default_config
-    if ! save_config || ! validate_config; then
+    if ! load_default_config || ! save_config || ! validate_config; then
         _error "E703" "Nuclear reset could not persist and validate default configuration" 0
         return 2
     fi

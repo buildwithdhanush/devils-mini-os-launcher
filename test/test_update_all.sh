@@ -44,7 +44,6 @@ exit 0
 FAKECURL
 chmod 755 "${FAKE_CURL_BIN}/curl"
 SBOX_RETRY="$(new_sandbox)"
-RETRY_FILE="${SBOX_RETRY}/curl-count"
 out="$(run_core "${SBOX_RETRY}" '
     DEVILS_MINIOS_CONFIG[network_timeout]=1
     DEVILS_MINIOS_CONFIG[network_retries]=3
@@ -56,7 +55,7 @@ out="$(run_core "${SBOX_RETRY}" '
 ')"
 assert_contains "network_retries retries a failed GitHub download and eventually succeeds" "${out}" "curl_rc=0 attempts=3 content=ok"
 section "startup update notice uses the centralized structured executor"
-assert_eq "startup update notice does not directly execute git ls-remote" "0" "$(grep -n 'git ls-remote' "${DMOS_PROJECT_ROOT}/devils-minios.sh" | wc -l | tr -d ' ')"
+assert_eq "startup update notice does not directly execute git ls-remote" "0" "$(grep -cF 'git ls-remote' "${DMOS_PROJECT_ROOT}/devils-minios.sh" || true)"
 assert_contains "startup update notice dispatches git ls-remote through execute_structured" "$(grep -n 'execute_structured git "ls-remote"' "${DMOS_PROJECT_ROOT}/devils-minios.sh")" "execute_structured git"
 section "no config key can override the repository URL"
 # Static: config schema must not contain a repository URL key

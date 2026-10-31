@@ -59,6 +59,15 @@ out="$(run_core "${SBOX}" '
 assert_contains "_has_command finds bash on PATH" "${out}" "bash=yes"
 assert_contains "_has_command reports missing for a bogus command" "${out}" "fake=no"
 
+section "clear_screen erases viewport and scrollback even if tput returns success without output"
+out="$(run_core "${SBOX}" '
+    tput() { return 0; }
+    clear_screen | od -An -tx1
+')"
+assert_contains "screen clearing is not skipped when tput falsely reports success" "${out}" "1b 5b 48"
+assert_contains "screen clearing includes erase-display sequence" "${out}" "1b 5b 32 4a"
+assert_contains "screen clearing includes scrollback erase sequence" "${out}" "1b 5b 33 4a"
+
 section "sanitize_input"
 out="$(run_core "${SBOX}" '
     printf "[%s]\n" "$(sanitize_input "$(printf "abc\x01\x02def")" 1024)"
@@ -216,6 +225,8 @@ assert_contains "draw_box_bottom: uses the corner glyphs" "${out}" "╝"
 
 section "§13.1 apply_theme / set_banner / error_handler / check_storage_threshold"
 out="$(run_core "${SBOX_PLAT}" '
+    load_default_config || exit 1
+    save_config || exit 1
     apply_theme "not-a-theme" >/dev/null 2>&1; printf "bad_theme_rc=%s\n" "$?"
     apply_theme nord >/dev/null 2>&1; printf "theme=%s\n" "${DEVILS_MINIOS_CONFIG[theme]}"
     set_banner "not-a-banner" >/dev/null 2>&1; printf "bad_banner_rc=%s\n" "$?"
@@ -389,10 +400,10 @@ assert_eq "default network_retries" "3" "$(sed -n 's/^network_retries=//p' "${DM
 
 section "§43.4 static validation: forbidden constructs (§23 no dynamic shell evaluation, §4 no curl|bash)"
 _src=("${DMOS_PROJECT_ROOT}/devils-minios.sh" "${DMOS_PROJECT_ROOT}/install.sh" "${DMOS_PROJECT_ROOT}/modules" "${DMOS_PROJECT_ROOT}/core")
-assert_eq "§43.4: no 'eval' in launcher/installer sources" "0" "$(grep -rEn '(^|[;&|(]|[[:space:]])eval[[:space:]]' --include='*.sh' "${_src[@]}" | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' | wc -l | tr -d ' ')"
-assert_eq "§43.4: no 'sh -c' / 'bash -c' in launcher/installer sources" "0" "$(grep -rEn '(^|[^A-Za-z_])(ba)?sh[[:space:]]+-c([[:space:]]|$)' --include='*.sh' "${_src[@]}" | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' | wc -l | tr -d ' ')"
-assert_eq "§43.4: no curl|bash / wget|bash pipelines in sources" "0" "$(grep -rEn '(curl|wget)[^#]*\|[[:space:]]*(ba)?sh' --include='*.sh' "${_src[@]}" | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' | wc -l | tr -d ' ')"
-assert_eq "§43.4: no sudo/su privilege escalation in sources" "0" "$(grep -rEn '(^|[;&|(]|[[:space:]])(sudo|su)[[:space:]]+-?[A-Za-z]' --include='*.sh' "${_src[@]}" | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#|"[^"]*(sudo|su)[[:space:]]' | wc -l | tr -d ' ')"
+assert_eq "§43.4: no 'eval' in launcher/installer sources" "0" "$(grep -rEn '(^|[;&|(]|[[:space:]])eval[[:space:]]' --include='*.sh' "${_src[@]}" | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' | awk 'END { print NR+0 }')"
+assert_eq "§43.4: no 'sh -c' / 'bash -c' in launcher/installer sources" "0" "$(grep -rEn '(^|[^A-Za-z_])(ba)?sh[[:space:]]+-c([[:space:]]|$)' --include='*.sh' "${_src[@]}" | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' | awk 'END { print NR+0 }')"
+assert_eq "§43.4: no curl|bash / wget|bash pipelines in sources" "0" "$(grep -rEn '(curl|wget)[^#]*\|[[:space:]]*(ba)?sh' --include='*.sh' "${_src[@]}" | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' | awk 'END { print NR+0 }')"
+assert_eq "§43.4: no sudo/su privilege escalation in sources" "0" "$(grep -rEn '(^|[;&|(]|[[:space:]])(sudo|su)[[:space:]]+-?[A-Za-z]' --include='*.sh' "${_src[@]}" | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#|"[^"]*(sudo|su)[[:space:]]' | awk 'END { print NR+0 }')"
 
 section "§43.4 static validation: catalogs, version, docs, manifest"
 _db="${DMOS_PROJECT_ROOT}/data/proot_apps.db"
@@ -407,13 +418,13 @@ done
 [[ -f "${DMOS_PROJECT_ROOT}/README.md" ]] || _docs_missing+="README "
 assert_eq "§50/§43.4: all required documentation files exist" "" "${_docs_missing}"
 _trace_header="$(grep -m1 '^| Requirement ID |' "${DMOS_PROJECT_ROOT}/docs/TRACEABILITY.md" || true)"
-assert_eq "§43.5.2: traceability matrix has exactly 13 required columns" "13" "$(printf '%s\n' "${_trace_header}" | awk -F'|' '{print NF-2}')"
+assert_eq "§43.5.2: traceability matrix has exactly 14 required columns" "14" "$(printf '%s\n' "${_trace_header}" | awk -F'|' '{print NF-2}')"
 assert_contains "§43.5.2: traceability matrix contains Rationale column" "${_trace_header}" "Rationale"
 assert_contains "§43.5.2: traceability matrix contains Accountable Owner column" "${_trace_header}" "Accountable Owner"
 assert_contains "§43.5.2: traceability matrix contains Approval Authority column" "${_trace_header}" "Approval Authority"
-_trace_bad_rows="$(awk '/^\| PRD-/{line=$0; gsub(/\\\|/,"__PIPE__",line); n=split(line,a,"\|"); if (n-2 != 13) bad++} END{print bad+0}' "${DMOS_PROJECT_ROOT}/docs/TRACEABILITY.md")"
-assert_eq "§43.5.2: every requirement row has exactly 13 columns" "0" "${_trace_bad_rows}"
-_trace_empty_owner="$(awk '/^\| PRD-/{line=$0; gsub(/\\\|/,"__PIPE__",line); n=split(line,a,"\|"); if (n-2==13 && (a[5]=="" || a[6]=="" || a[7]=="")) bad++} END{print bad+0}' "${DMOS_PROJECT_ROOT}/docs/TRACEABILITY.md")"
+_trace_bad_rows="$(awk '/^\| PRD-/{line=$0; gsub(/\\\|/,"__PIPE__",line); n=split(line,a,"\|"); if (n-2 != 14) bad++} END{print bad+0}' "${DMOS_PROJECT_ROOT}/docs/TRACEABILITY.md")"
+assert_eq "§43.5.2: every requirement row has exactly 14 columns" "0" "${_trace_bad_rows}"
+_trace_empty_owner="$(awk '/^\| PRD-/{line=$0; gsub(/\\\|/,"__PIPE__",line); n=split(line,a,"\|"); if (n-2==14 && (a[13]=="" || a[14]=="" || a[15]=="")) bad++} END{print bad+0}' "${DMOS_PROJECT_ROOT}/docs/TRACEABILITY.md")"
 assert_eq "§43.5.2: every requirement row has populated owner fields" "0" "${_trace_empty_owner}"
 _sum_missing=0
 while IFS= read -r _l; do
@@ -484,6 +495,5 @@ FNR==1 { prev="" }
 }
 { prev=$0 }' "${DMOS_PROJECT_ROOT}"/modules/*.sh "${DMOS_PROJECT_ROOT}"/core/*.sh)"
 assert_eq "§13: every public function has a contract comment" "" "${_contract_missing}"
-
 print_summary "test_utils.sh"
 exit $?

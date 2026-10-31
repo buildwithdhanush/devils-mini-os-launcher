@@ -231,7 +231,11 @@ _interactive_menu() {
     local choice module
     while true; do
         show_main_menu
-        choice="$(_prompt_default 'Select' '0')"
+        printf 'Choice: ' >&2
+        if ! IFS= read -r choice; then
+            choice="0"
+        fi
+        [[ -z "${choice}" ]] && choice="0"
         [[ "${choice}" == "0" ]] && { write_log_file "INFO" "Exiting launcher"; exit 0; }
         if module="$(main_menu_module_for_choice "${choice}")"; then
             DEVILS_MINIOS_CURRENT_STATE="MODULE_RUNNING"

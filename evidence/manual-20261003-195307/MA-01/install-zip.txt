@@ -1,0 +1,36 @@
+[2026-10-03 20:03:51] [INFO] Devil's Mini OS Launcher Installer v1.0.0
+[2026-10-03 20:03:51] [INFO] ==============================================
+[2026-10-03 20:03:51] [INFO] Bash version check passed: 5.3.20(1)-release
+[2026-10-03 20:03:51] [INFO] Termux environment detected
+[2026-10-03 20:03:51] [INFO] Termux source: f-droid
+[2026-10-03 20:03:51] [INFO] Source directory: /data/data/com.termux/files/home/devils-mini-os-launcher-Testing
+[2026-10-03 20:03:51] [INFO] Validating installation source...
+[2026-10-03 20:03:51] [INFO] SHA256SUMS present; verifying manifest...
+[2026-10-03 20:03:51] [INFO] Manifest checksum verification passed
+[2026-10-03 20:03:51] [INFO] Source validation passed
+[2026-10-03 20:03:51] [WARN] Could not determine available storage; proceeding with caution
+[2026-10-03 20:03:51] [INFO] Preparing installation directory: /data/data/com.termux/files/usr/opt/devils-minios
+[2026-10-03 20:03:51] [INFO] Previous installation detected, will be replaced
+[2026-10-03 20:03:51] [INFO] Copying files to installation directory...
+[2026-10-03 20:03:52] [INFO] Validating staged installation...
+[2026-10-03 20:03:52] [INFO] Activating installation...
+[2026-10-03 20:03:52] [INFO] Installation activated successfully
+[2026-10-03 20:03:52] [INFO] Creating executable symlink...
+[2026-10-03 20:03:52] [INFO] Symlink created: /data/data/com.termux/files/usr/bin/devils-minios
+
+╔════════════════════════════════════════════════════════════════╗
+║  Devil's Mini OS Launcher v1.0.0 Installed Successfully!      ║
+╠════════════════════════════════════════════════════════════════╣
+║                                                                ║
+║  Installation directory: /data/data/com.termux/files/usr/opt/devils-minios
+║  Executable: /data/data/com.termux/files/usr/bin/devils-minios
+║                                                                ║
+║  To launch:                                                    ║
+║    devils-minios                                               ║
+║                                                                ║
+║  For help:                                                     ║
+║    devils-minios --help                                        ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+[2026-10-03 20:03:52] [INFO] Installation complete!

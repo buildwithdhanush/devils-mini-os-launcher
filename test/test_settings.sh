@@ -64,14 +64,93 @@ out="$(run_core "${SBOX}" '
 ')"
 assert_contains "state reset leaves theme intact" "${out}" "theme_after_state_reset=nord"
 
-section "language locked to en"
+section "language locked to en (corrupt file injected to exercise validation)"
 out="$(run_core "${SBOX}" '
     load_default_config
-    DEVILS_MINIOS_CONFIG[language]=fr
-    save_config 2>/dev/null || true
+    save_config || exit 1
+    sed "s/^language=en$/language=fr/" "${DEVILS_MINIOS_CONFIG_FILE}" > "${DEVILS_MINIOS_CONFIG_FILE}.injected"
+    mv -f "${DEVILS_MINIOS_CONFIG_FILE}.injected" "${DEVILS_MINIOS_CONFIG_FILE}"
     if validate_config 2>/dev/null; then printf "lang=accepted\n"; else printf "lang=rejected\n"; fi
 ')"
 assert_contains "non-en language rejected" "${out}" "lang=rejected"
+
+section "data/defaults.conf is the authoritative defaults source"
+out="$(run_core "${SBOX}" '
+    defaults="${DEVILS_MINIOS_INSTALL_DIR}/data/defaults.conf"
+    cp "${defaults}" "${defaults}.original"
+    sed "s/^theme=dracula$/theme=nord/" "${defaults}" > "${defaults}.test"
+    mv -f "${defaults}.test" "${defaults}"
+    load_default_config || { mv -f "${defaults}.original" "${defaults}"; exit 1; }
+    printf "loaded_theme=%s\n" "${DEVILS_MINIOS_CONFIG[theme]}"
+    mv -f "${defaults}.original" "${defaults}"
+')"
+assert_contains "load_default_config reads the shipped defaults.conf theme" "${out}" "loaded_theme=nord"
+
+section "atomic config write failure preserves the active file and import memory"
+out="$(run_core "${SBOX}" '
+    load_default_config || exit 1
+    save_config || exit 1
+    DEVILS_MINIOS_CONFIG[theme]=nord
+    save_config || exit 1
+    old_disk="$(cat "${DEVILS_MINIOS_CONFIG_FILE}")"
+    cat > "${HOME}/valid-import.conf" <<"DMOS_CONFIG"
+config_version=1
+theme=gruvbox
+banner=devil
+banner_animation=false
+auto_launch=false
+health_check_interval=1800
+log_level=INFO
+check_updates=false
+language=en
+network_timeout=30
+network_retries=3
+DMOS_CONFIG
+    mv() {
+        if [[ "${4:-}" == "${DEVILS_MINIOS_CONFIG_FILE}" ]]; then return 1; fi
+        command mv "$@"
+    }
+    if import_config "${HOME}/valid-import.conf" >/dev/null 2>&1; then import_rc=0; else import_rc=$?; fi
+    unset -f mv
+    disk_after="$(cat "${DEVILS_MINIOS_CONFIG_FILE}")"
+    printf "import_rc=%s memory_theme=%s disk_unchanged=%s tmp_left=%s\n" \
+        "${import_rc}" "${DEVILS_MINIOS_CONFIG[theme]}" \
+        "$([[ "${disk_after}" == "${old_disk}" ]] && echo yes || echo no)" \
+        "$(find "${DEVILS_MINIOS_CONFIG_DIR}" -maxdepth 1 -type f -name "*.tmp.*" | wc -l | tr -d " ")"
+')"
+assert_contains "valid import returns failure when atomic rename fails" "${out}" "import_rc=1"
+assert_contains "failed valid import rolls back active in-memory settings" "${out}" "memory_theme=nord"
+assert_contains "failed valid import keeps the active config file byte-for-byte unchanged" "${out}" "disk_unchanged=yes"
+assert_contains "failed config write cleans up staged temporary files" "${out}" "tmp_left=0"
+
+section "failed defaults validation leaves the current in-memory configuration untouched"
+out="$(run_core "${SBOX}" '
+    load_default_config || exit 1
+    DEVILS_MINIOS_CONFIG[theme]=gruvbox
+    defaults="${DEVILS_MINIOS_INSTALL_DIR}/data/defaults.conf"
+    cp "${defaults}" "${defaults}.original"
+    sed "s/^theme=.*/theme=not-a-theme/" "${defaults}" > "${defaults}.invalid"
+    mv -f "${defaults}.invalid" "${defaults}"
+    if load_default_config >/dev/null 2>&1; then defaults_rc=0; else defaults_rc=$?; fi
+    printf "defaults_rc=%s theme_after_failure=%s\n" "${defaults_rc}" "${DEVILS_MINIOS_CONFIG[theme]}"
+    mv -f "${defaults}.original" "${defaults}"
+')"
+assert_contains "invalid defaults file is rejected" "${out}" "defaults_rc=1"
+assert_contains "invalid defaults file cannot partially reset active memory" "${out}" "theme_after_failure=gruvbox"
+
+section "config save rejects a symlinked config directory"
+SBOX_SYM="$(new_sandbox)"
+out="$(run_core "${SBOX_SYM}" '
+    outside="${HOME}/outside-config-target"
+    mkdir -p "${HOME}/.config" "${outside}"
+    rm -rf "${DEVILS_MINIOS_CONFIG_DIR}"
+    ln -s "${outside}" "${DEVILS_MINIOS_CONFIG_DIR}"
+    load_default_config || exit 1
+    if save_config >/dev/null 2>&1; then save_rc=0; else save_rc=$?; fi
+    printf "save_rc=%s outside_config=%s\n" "${save_rc}" "$([[ -e "${outside}/config" ]] && echo exists || echo absent)"
+')"
+assert_contains "symlinked config directory refuses config writes" "${out}" "save_rc=1"
+assert_contains "symlinked config directory target remains untouched" "${out}" "outside_config=absent"
 
 section "show_experimental_desktops is a permanently forbidden key (PRD-17-07)"
 out="$(run_core "${SBOX}" '
@@ -223,9 +302,10 @@ out="$(run_module "${SBOXIMP}" "settings" '
     printf "theme_after_good_import=%s\n" "${DEVILS_MINIOS_CONFIG[theme]}"
 
     bad="${HOME}/bad-import.conf"
-    printf "theme=dracula\nnot_a_real_key=evil\n" > "${bad}"
+    printf "theme=nord\nnot_a_real_key=evil\n" > "${bad}"
     _settings_import >/dev/null 2>&1 <<< "${bad}"
     printf "bad_import_rc=%s\n" "$?"
+    printf "theme_after_bad_import=%s\n" "${DEVILS_MINIOS_CONFIG[theme]}"
 
     _settings_import >/dev/null 2>&1 <<< "${HOME}/does-not-exist.conf"
     printf "missing_import_rc=%s\n" "$?"
@@ -233,6 +313,7 @@ out="$(run_module "${SBOXIMP}" "settings" '
 assert_contains "importing a file re-exported via export/core validation succeeds" "${out}" "good_import_rc=0"
 assert_contains "a valid import restores the exported theme value" "${out}" "theme_after_good_import=dracula"
 assert_contains "import rejects a file with a key outside the strict grammar (status 2, delegated to core)" "${out}" "bad_import_rc=2"
+assert_contains "rejected import leaves active in-memory config unchanged" "${out}" "theme_after_bad_import=dracula"
 assert_contains "import of a nonexistent file is rejected (status 2)" "${out}" "missing_import_rc=2"
 
 print_summary "test_settings.sh"

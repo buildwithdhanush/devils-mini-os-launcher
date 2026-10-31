@@ -40,10 +40,10 @@ android_tools_menu() {
         printf '%s\n' "0) Back"
         choice="$(_prompt_default 'Choice' '0')"
         case "${choice}" in
-            1) _android_tools_adb; _confirm "Continue" || true ;;
-            2) _android_tools_fastboot; _confirm "Continue" || true ;;
-            3) _android_tools_termux_api_status; _confirm "Continue" || true ;;
-            4) _android_tools_info; _confirm "Continue" || true ;;
+            1) _android_tools_adb; _pause "Press Enter to return to the menu" ;;
+            2) _android_tools_fastboot; _pause "Press Enter to return to the menu" ;;
+            3) _android_tools_termux_api_status; _pause "Press Enter to return to the menu" ;;
+            4) _android_tools_info; _pause "Press Enter to return to the menu" ;;
             0) return 0 ;;
             *) printf 'Invalid selection.\n'; sleep 1 ;;
         esac

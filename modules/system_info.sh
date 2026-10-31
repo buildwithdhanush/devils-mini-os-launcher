@@ -86,9 +86,9 @@ system_info_menu() {
         printf '%s\n' "0) Back"
         choice="$(_prompt_default 'Choice' '0')"
         case "${choice}" in
-            1) _system_info_show; _confirm "Continue" || true ;;
-            2) _system_info_storage_detail; _confirm "Continue" || true ;;
-            3) _system_info_environment; _confirm "Continue" || true ;;
+            1) _system_info_show; _pause "Press Enter to return to the menu" ;;
+            2) _system_info_storage_detail; _pause "Press Enter to return to the menu" ;;
+            3) _system_info_environment; _pause "Press Enter to return to the menu" ;;
             0) return 0 ;;
             *) printf 'Invalid selection.\n'; sleep 1 ;;
         esac

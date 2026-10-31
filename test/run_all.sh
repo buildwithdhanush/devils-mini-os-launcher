@@ -51,7 +51,10 @@ for f in "${MANDATORY[@]}"; do
         continue
     fi
     printf '>>> Running %s\n' "${f}"
-    output="$(bash "${path}" 2>&1)" || true
+    # Preserve the test process exit status. A passing-looking summary must
+    # never override a non-zero process exit (e.g. a crash after assertions).
+    output="$(bash "${path}" 2>&1)"
+    test_status=$?
     printf '%s\n' "${output}"
 
     # Parse summary line: "name: N run, M passed, K failed"
@@ -63,23 +66,28 @@ for f in "${MANDATORY[@]}"; do
         TOTAL_RUN=$((TOTAL_RUN + run_n))
         TOTAL_PASS=$((TOTAL_PASS + pass_n))
         TOTAL_FAIL=$((TOTAL_FAIL + fail_n))
-        if [[ "${fail_n}" -eq 0 ]]; then
+        if [[ "${test_status}" -eq 0 && "${fail_n}" -eq 0 ]]; then
             PASSED_FILES=$((PASSED_FILES + 1))
             printf '[PASS] %s (%s assertions)\n\n' "${f}" "${pass_n}"
         else
             FAILED_FILES=$((FAILED_FILES + 1))
-            FAILED_LIST+=("${f}")
-            printf '[FAIL] %s (%s failed)\n\n' "${f}" "${fail_n}"
+            if [[ "${test_status}" -ne 0 ]]; then
+                FAILED_LIST+=("${f} (exit ${test_status})")
+                printf '[FAIL] %s (%s failed; process exit %s)\n\n' "${f}" "${fail_n}" "${test_status}"
+            else
+                FAILED_LIST+=("${f}")
+                printf '[FAIL] %s (%s failed)\n\n' "${f}" "${fail_n}"
+            fi
         fi
     else
-        # Fallback: check exit via last lines
-        if printf '%s\n' "${output}" | grep -q '0 failed'; then
+        # A summary fallback is valid only when the process itself exited 0.
+        if [[ "${test_status}" -eq 0 ]] && printf '%s\n' "${output}" | grep -q '0 failed'; then
             PASSED_FILES=$((PASSED_FILES + 1))
             printf '[PASS] %s (summary parse fallback)\n\n' "${f}"
         else
             FAILED_FILES=$((FAILED_FILES + 1))
-            FAILED_LIST+=("${f}")
-            printf '[FAIL] %s (no summary / failures)\n\n' "${f}"
+            FAILED_LIST+=("${f} (exit ${test_status}; no valid summary / failures)")
+            printf '[FAIL] %s (exit %s; no valid summary / failures)\n\n' "${f}" "${test_status}"
         fi
     fi
 done

@@ -440,9 +440,6 @@ check_updates=false
 language=en
 network_timeout=30
 network_retries=3
-termux_source=unknown
-android_version=unknown
-architecture=x86_64
 CFG
 cat > "${SBOX_AL}/home/.config/devils-minios/state" <<'STATE'
 state_version=1
@@ -451,6 +448,8 @@ last_successful_workflow=system_info|view|system
 onboarding_completion=true
 crash_loop_state=
 STATE
+# Match the completed-onboarding state to its required marker for Termux.
+touch "${SBOX_AL}/home/.config/devils-minios/.onboarding-complete"
 out="$(printf '0\n0\n' | HOME="${SBOX_AL}/home" PREFIX="${SBOX_AL}/usr" timeout 8 bash "${SBOX_AL}/usr/opt/devils-minios/devils-minios.sh" 2>&1)" || true
 assert_contains "zero-argument launch with auto_launch=true dispatches the last successful workflow's module" "${out}" "System Info"
 assert_not_contains "auto-launched bare invocation does not fall through to the interactive main menu" "${out}" "Main Menu"
@@ -494,6 +493,6 @@ out="$(run_core "${SBOX_STATE2}" '
     load_state; printf "rc=%s reinit=%s state_version=%s\n" "$?" "${DEVILS_MINIOS_STATE_RECOVERY_REINITIALIZED}" "${DEVILS_MINIOS_STATE[state_version]}"
 ')"
 assert_contains "unrecoverable state is reinitialized and marked for FIRST_BOOT" "${out}" "rc=0 reinit=true state_version=1"
-self_update_guard="$(grep -nE 'validate_path .*DEVILS_MINIOS_(UPDATE|INSTALL|BACKUP)|validate_path .*stage|validate_path .*previous|validate_path .*cache' core/devils_self_update.sh core/core_state.sh modules/system_tools.sh | wc -l | tr -d ' ')"
+self_update_guard="$(grep -nE 'validate_path .*DEVILS_MINIOS_(UPDATE|INSTALL|BACKUP)|validate_path .*stage|validate_path .*previous|validate_path .*cache' core/devils_self_update.sh core/core_state.sh modules/system_tools.sh | awk 'END { print NR+0 }')"
 if (( self_update_guard >= 3 )); then pass "recursive deletion code has explicit validation guards"; else fail "recursive deletion code has explicit validation guards"; fi
 print_summary "test_integration.sh"

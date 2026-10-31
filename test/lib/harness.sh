@@ -209,30 +209,38 @@ section() {
 run_platform_and_core_boundary_tests() {
     section "PRD §9/§10: detect_platform architecture, API-floor and non-Termux diagnostics-only gating"
     SBOXPLAT="$(new_sandbox)"
+    # Quoted fixture intentionally preserves literal Bash variables for the child shell.
+    # shellcheck disable=SC2016
     out="$(run_core "${SBOXPLAT}" '
-        mkdir -p "$(get_config_dir)/logs"
+        mkdir -p "$(get_config_dir)/logs" "${HOME}/.dmos-test-tmp"
+        # Force the simulated Termux filesystem predicate so this test remains
+        # deterministic even when the suite itself runs inside real Termux.
+        _termux_app_directory_present() { return 0; }
         uname() { if [[ "$1" == "-m" ]]; then printf "riscv64\n"; else printf "Linux\n"; fi; }
-        ( detect_platform ) >/tmp/dmos_arch_out.$$ 2>&1; rc=$?
+        ( detect_platform ) >"${HOME}/.dmos-test-tmp/dmos_arch_out.$$" 2>&1; rc=$?
         printf "unsupported_arch_rc=%s\n" "${rc}"
-        grep -q "E900" /tmp/dmos_arch_out.$$ && printf "unsupported_arch_e900=yes\n" || printf "unsupported_arch_e900=no\n"
-        rm -f /tmp/dmos_arch_out.$$
+        grep -q "E900" "${HOME}/.dmos-test-tmp/dmos_arch_out.$$" && printf "unsupported_arch_e900=yes\n" || printf "unsupported_arch_e900=no\n"
+        rm -f "${HOME}/.dmos-test-tmp/dmos_arch_out.$$"
         unset -f uname
     ')"
     assert_contains "PRD-9-003: unsupported architecture aborts with exit status 5" "${out}" "unsupported_arch_rc=5"
     assert_contains "PRD-9-003: unsupported architecture is reported as registered code E900" "${out}" "unsupported_arch_e900=yes"
 
     SBOXAPI="$(new_sandbox)"
+    # Quoted fixture intentionally preserves literal Bash variables for the child shell.
+    # shellcheck disable=SC2016
     out="$(run_core "${SBOXAPI}" '
-        mkdir -p "$(get_config_dir)/logs"
+        mkdir -p "$(get_config_dir)/logs" "${HOME}/.dmos-test-tmp"
+        _termux_app_directory_present() { return 0; }
         uname() { if [[ "$1" == "-m" ]]; then printf "aarch64\n"; else printf "Linux\n"; fi; }
         getprop() { case "$1" in ro.build.version.sdk) printf "24\n" ;; ro.build.version.release) printf "7.0\n" ;; esac; }
-        ( detect_platform ) >/tmp/dmos_api_out.$$ 2>&1; rc=$?
+        ( detect_platform ) >"${HOME}/.dmos-test-tmp/dmos_api_out.$$" 2>&1; rc=$?
         printf "below_floor_rc=%s\n" "${rc}"
-        grep -q "E900" /tmp/dmos_api_out.$$ && printf "below_floor_e900=yes\n" || printf "below_floor_e900=no\n"
-        rm -f /tmp/dmos_api_out.$$
+        grep -q "E900" "${HOME}/.dmos-test-tmp/dmos_api_out.$$" && printf "below_floor_e900=yes\n" || printf "below_floor_e900=no\n"
+        rm -f "${HOME}/.dmos-test-tmp/dmos_api_out.$$"
         getprop() { case "$1" in ro.build.version.sdk) printf "29\n" ;; ro.build.version.release) printf "10\n" ;; esac; }
-        ( detect_platform ) >/tmp/dmos_api_ok.$$ 2>&1; printf "at_floor_rc=%s\n" "$?"
-        rm -f /tmp/dmos_api_ok.$$
+        ( detect_platform ) >"${HOME}/.dmos-test-tmp/dmos_api_ok.$$" 2>&1; printf "at_floor_rc=%s\n" "$?"
+        rm -f "${HOME}/.dmos-test-tmp/dmos_api_ok.$$"
         unset -f uname getprop
     ')"
     assert_contains "PRD-9-001: Android API below 29 aborts with exit status 5" "${out}" "below_floor_rc=5"
@@ -240,15 +248,20 @@ run_platform_and_core_boundary_tests() {
     assert_contains "PRD-9-001: Android API 29 (the supported floor) is accepted" "${out}" "at_floor_rc=0"
 
     SBOXNONTMX="$(new_sandbox)"
+    # Quoted fixture intentionally preserves literal Bash variables for the child shell.
+    # shellcheck disable=SC2016
     out="$(run_core "${SBOXNONTMX}" '
-        mkdir -p "$(get_config_dir)/logs"
+        mkdir -p "$(get_config_dir)/logs" "${HOME}/.dmos-test-tmp"
+        # Explicitly simulate a host without the Termux app directories; this
+        # prevents the physical device running the test from changing the case.
+        _termux_app_directory_present() { return 1; }
         uname() { if [[ "$1" == "-m" ]]; then printf "x86_64\n"; else printf "Linux\n"; fi; }
         unset PREFIX
-        detect_platform >/tmp/dmos_nontmx_out.$$ 2>&1
+        detect_platform >"${HOME}/.dmos-test-tmp/dmos_nontmx_out.$$" 2>&1
         printf "platform=%s\n" "${DEVILS_MINIOS_PLATFORM}"
         printf "safe_mode=%s\n" "${DEVILS_MINIOS_SAFE_MODE}"
-        grep -q "E900" /tmp/dmos_nontmx_out.$$ && printf "nontermux_e900=yes\n" || printf "nontermux_e900=no\n"
-        rm -f /tmp/dmos_nontmx_out.$$
+        grep -q "E900" "${HOME}/.dmos-test-tmp/dmos_nontmx_out.$$" && printf "nontermux_e900=yes\n" || printf "nontermux_e900=no\n"
+        rm -f "${HOME}/.dmos-test-tmp/dmos_nontmx_out.$$"
         unset -f uname
     ')"
     assert_contains "PRD-10-002: non-Termux host is detected (not termux)" "${out}" "platform=linux"
@@ -256,6 +269,8 @@ run_platform_and_core_boundary_tests() {
     assert_contains "PRD-10-002: unsupported host combination is reported as registered code E900" "${out}" "nontermux_e900=yes"
 
     section "PRD-11-002: core.sh owns platform/config/logging/security/recovery/UI; features stay modular"
+    # Quoted fixture intentionally preserves literal Bash variables for the child shell.
+    # shellcheck disable=SC2016
     out="$(run_core "${SBOXPLAT}" '
         for fn in write_log_file detect_platform validate_path execute_structured \
                   save_config load_state nuclear_reset backup_create install_proot_package apply_theme; do

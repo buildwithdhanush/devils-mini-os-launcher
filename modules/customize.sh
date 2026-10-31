@@ -17,14 +17,22 @@ _customize_banner() {
 }
 
 _customize_banner_animation() {
-    if [[ "${DEVILS_MINIOS_CONFIG[banner_animation]:-false}" == true ]]; then
+    local old_value="${DEVILS_MINIOS_CONFIG[banner_animation]:-false}"
+    if [[ "${old_value}" == true ]]; then
         DEVILS_MINIOS_CONFIG[banner_animation]=false
-        printf 'Banner animation disabled.\n'
     else
         DEVILS_MINIOS_CONFIG[banner_animation]=true
-        printf 'Banner animation enabled.\n'
     fi
-    save_config
+    if ! save_config; then
+        DEVILS_MINIOS_CONFIG[banner_animation]="${old_value}"
+        _error "E900" "Banner animation change was not saved; previous value restored" 0
+        return 1
+    fi
+    if [[ "${DEVILS_MINIOS_CONFIG[banner_animation]}" == true ]]; then
+        printf 'Banner animation enabled.\n'
+    else
+        printf 'Banner animation disabled.\n'
+    fi
 }
 
 _customize_preview() {
@@ -49,7 +57,7 @@ customize_menu() {
             1) _customize_theme ;;
             2) _customize_banner ;;
             3) _customize_banner_animation; sleep 1 ;;
-            4) _customize_preview; _confirm "Continue" || true ;;
+            4) _customize_preview; _pause "Press Enter to return to the menu" ;;
             0) return 0 ;;
             *) printf 'Invalid selection.\n'; sleep 1 ;;
         esac

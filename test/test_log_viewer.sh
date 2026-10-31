@@ -55,4 +55,8 @@ out="$(run_module "${SBOX}" log_viewer '
 ')"
 assert_contains "log viewer Exit action returns successfully instead of terminating the launcher" "${out}" "exit_rc=0"
 
+section "UI clear_screen removes scrollback so prior menus cannot remain above the next one"
+out="$(run_core "${SBOX}" 'clear_screen | od -An -t x1')"
+assert_contains "clear_screen emits ANSI scrollback clear (CSI 3 J)" "${out}" "1b 5b 33 4a"
+
 print_summary "test_log_viewer.sh"

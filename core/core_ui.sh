@@ -18,11 +18,13 @@ _apply_ansi() {
 
 # Contract: clear_screen(none); returns: 0 on success, non-zero on failure; side effects: writes, replaces, backs up, restores, or removes persistent data as applicable.
 clear_screen() {
-    if _has_command tput; then
-        tput clear 2>/dev/null || printf '\033[2J\033[H'
-    else
-        printf '\033[2J\033[H'
-    fi
+    # Termux can expose a TERM/terminfo combination where `tput clear` exits
+    # successfully but emits a sequence the active terminal does not use to
+    # erase the visible screen. Emit the portable ANSI clear/home sequence
+    # directly so every module starts from a known screen state. Include
+    # CSI 3 J to clear scrollback too; otherwise stale menus/welcome text can
+    # remain above the visible screen in Termux even though the viewport clears.
+    printf '\033[H\033[2J\033[3J'
 }
 
 # Contract: draw_box_top(width, label); returns: 0 on normal completion, non-zero on failure/abort where applicable; side effects: renders UI and may invoke delegated user actions.
@@ -30,16 +32,34 @@ draw_box_top() {
     local width="${1:-60}"
     local label="${2:-}"
     local inner=$((width - 2))
-    printf '╔'
-    printf '%*s' "$((inner))" '' | tr ' ' '═'
-    printf '╗\n'
+    local label_len=${#label}
+    if [[ -n "${label}" && ${label_len} -le $((inner - 4)) ]]; then
+        local marked=" ${label} "
+        local marked_len=${#marked}
+        local left=$(((inner - marked_len) / 2))
+        local right=$((inner - marked_len - left))
+        local fill
+        printf '╔'
+        printf -v fill '%*s' "${left}" ''
+        printf '%s' "${fill// /═}"
+        printf '%s' "${marked}"
+        printf -v fill '%*s' "${right}" ''
+        printf '%s' "${fill// /═}"
+        printf '╗\n'
+    else
+        local fill
+        printf '╔'
+        printf -v fill '%*s' "${inner}" ''
+        printf '%s' "${fill// /═}"
+        printf '╗\n'
+    fi
 }
 
 # Contract: draw_box_line(width, text); returns: 0 on normal completion, non-zero on failure/abort where applicable; side effects: renders UI and may invoke delegated user actions.
 draw_box_line() {
     local width="${1:-60}"
     local text="${2:-}"
-    local padding=$((width - 2 - ${#text}))
+    local padding=$((width - 3 - ${#text}))
     [[ ${padding} -lt 0 ]] && padding=0
     printf '║ %s' "${text}"
     printf '%*s' "${padding}" ''
@@ -50,8 +70,10 @@ draw_box_line() {
 draw_box_bottom() {
     local width="${1:-60}"
     local inner=$((width - 2))
+    local fill
     printf '╚'
-    printf '%*s' "$((inner))" '' | tr ' ' '═'
+    printf -v fill '%*s' "${inner}" ''
+    printf '%s' "${fill// /═}"
     printf '╝\n'
 }
 
@@ -61,12 +83,29 @@ show_banner() {
     [[ "${DEVILS_MINIOS_UI_MODE}" == "minimal" ]] && return 0
     case "${banner}" in
         devil)
-            printf '  ____             _ _  _       _   __  __ _      ___   \n'
-            printf ' |  _ \\  _____   _| (_)(_) __ _| | |  \\/  (_)_  _/___|  \n'
-            printf ' | | | |/ _ \\ \\ / / | || |/ _` | | | |\\/| | \\ \\/ / _ \\ \n'
-            printf ' | |_| |  __/\\ V /| | || | (_| | | | |  | | |>  < (_) |\n'
-            printf ' |____/ \\___| \\_/ |_|_|/ |_|\\__,_|_| |_|  |_|_/_/\\___/ \n'
-            printf '                     |__/                              \n'
+            if [[ "${DEVILS_MINIOS_UI_MODE:-full}" == "compact" ]]; then
+                printf "DEVIL'S MINI OS LAUNCHER v%s\n\n" "${DEVILS_MINIOS_VERSION}"
+                return 0
+            fi
+            # Large monochrome block-letter banner inspired by the mobile TUI
+            # layout. It deliberately emits no ANSI color sequences; Termux's
+            # terminal palette controls the foreground/background colors.
+            printf '%s\n' \
+                '██████  ███████ ██    ██ ███████ ██       ██████ ' \
+                '██   ██ ██      ██    ██   ███   ██      ██      ' \
+                '██    ██ ██████  ██    ██   ███   ██       ██████ ' \
+                '██    ██ ██       ██  ██    ███   ██            ██' \
+                '██   ██ ██        ████     ███   ██            ██' \
+                '██████  ███████    ██    ███████ ███████  ██████ '
+            printf '\n'
+            printf '%s\n' \
+                '██    ██ ███████ ██    ██ ███████          ██████   ██████' \
+                '███  ███   ███   ███   ██   ███           ██    ██ ██' \
+                '██ ██ ██   ███   ██ ██ ██   ███           ██    ██  ██████' \
+                '██    ██   ███   ██  ████   ███           ██    ██       ██' \
+                '██    ██   ███   ██   ███   ███           ██    ██       ██' \
+                '██    ██ ███████ ██    ██ ███████          ██████   ██████'
+            printf "\nDevil's Mini OS Launcher v%s\n\n" "${DEVILS_MINIOS_VERSION}"
             ;;
         minimal)
             printf "Devil's Mini OS Launcher\n"
@@ -88,20 +127,42 @@ show_banner() {
 
 # Canonical ordered module list for the interactive menu (§12, §15).
 readonly -a DEVILS_MINIOS_MAIN_MENU_MODULES=(
-    "linux_env:Linux Environment (proot distros/desktops)"
+    "linux_env:Linux Environments"
     "file_mgr:File Manager"
-    "termux_apps:Termux Apps"
-    "proot_apps:Proot Apps"
+    "termux_apps:Termux App Store (Native)"
+    "proot_apps:Proot App Store"
     "android_tools:Android Tools"
-    "workspace:Workspace"
-    "health_check:Health Check"
+    "workspace:Workspace Templates"
+    "health_check:System Doctor"
     "logs:Log Viewer"
-    "customize:Customize (theme/banner)"
+    "customize:Customize"
     "system_tools:System Tools"
     "system_info:System Info"
     "update:Update All"
     "settings:Settings"
 )
+
+# Render the source warning alongside the banner because the normal startup
+# warning is cleared when the menu first paints. Plain text only: no hardcoded
+# ANSI colors or Termux palette changes.
+_show_menu_termux_warning() {
+    [[ "${DEVILS_MINIOS_PLATFORM:-}" == "termux" ]] || return 0
+    case "${DEVILS_MINIOS_TERMUX_SOURCE:-unknown}" in
+        play-store)
+            printf '%s\n' \
+                'WARNING: Play Store Termux detected.' \
+                'This build is deprecated. Install Termux from F-Droid or GitHub:' \
+                'https://f-droid.org/packages/com.termux/'
+            ;;
+        unknown)
+            printf '%s\n' \
+                'WARNING: Termux source could not be verified.' \
+                'For supported builds, install Termux from F-Droid or GitHub:' \
+                'https://f-droid.org/packages/com.termux/'
+            ;;
+    esac
+    printf '\n'
+}
 
 # Contract: show_main_menu_full(none); returns: 0 on normal completion, non-zero on failure/abort where applicable; side effects: renders UI and may invoke delegated user actions.
 show_main_menu_full() {
@@ -109,6 +170,7 @@ show_main_menu_full() {
     [[ ${width} -lt 40 ]] && width=60
     clear_screen
     show_banner
+    _show_menu_termux_warning
     draw_box_top "${width}" "Main Menu"
     local i=1 entry label
     for entry in "${DEVILS_MINIOS_MAIN_MENU_MODULES[@]}"; do
@@ -124,6 +186,7 @@ show_main_menu_full() {
 show_main_menu_compact() {
     clear_screen
     show_banner
+    _show_menu_termux_warning
     printf '%s\n' "Main Menu - Devil's Mini OS Launcher"
     printf '%s\n' '----------------------------------------'
     local i=1 entry label
@@ -176,13 +239,19 @@ show_main_menu() {
 # Contract: apply_theme(theme); returns: 0 on success, non-zero on invalid input; side effects: updates and persists user customization.
 apply_theme() {
     local theme="${1:-${DEVILS_MINIOS_CONFIG[theme]:-dracula}}"
+    local old_theme="${DEVILS_MINIOS_CONFIG[theme]:-dracula}"
     _is_valid_key "${theme}" "${DEVILS_MINIOS_ALLOWED_THEMES[@]}" || {
         _error "E900" "Unknown theme: ${theme}" 0
         return 2
     }
     DEVILS_MINIOS_CONFIG[theme]="${theme}"
+    if ! save_config; then
+        DEVILS_MINIOS_CONFIG[theme]="${old_theme}"
+        _error "E900" "Theme change was not saved; previous theme restored" 0
+        return 1
+    fi
     if [[ "${DEVILS_MINIOS_PLATFORM}" == "termux" ]]; then
-        mkdir -p "${HOME}/.termux"
+        mkdir -p "${HOME}/.termux" || return 1
         case "${theme}" in
             dracula) printf '%s\n' 'background=#282a36' 'foreground=#f8f8f2' 'color0=#21222c' 'color7=#f8f8f2' > "${HOME}/.termux/colors.properties" ;;
             nord) printf '%s\n' 'background=#2e3440' 'foreground=#d8dee9' 'color0=#3b4252' 'color7=#eceff4' > "${HOME}/.termux/colors.properties" ;;
@@ -193,18 +262,24 @@ apply_theme() {
             termux-reload-settings >/dev/null 2>&1 || true
         fi
     fi
-    save_config
+    return 0
 }
 
 # Contract: set_banner(banner); returns: 0 on success, non-zero on invalid input; side effects: updates and persists user customization.
 set_banner() {
     local banner="$1"
+    local old_banner="${DEVILS_MINIOS_CONFIG[banner]:-devil}"
     _is_valid_key "${banner}" "${DEVILS_MINIOS_ALLOWED_BANNERS[@]}" || {
         _error "E900" "Unknown banner: ${banner}" 0
         return 2
     }
     DEVILS_MINIOS_CONFIG[banner]="${banner}"
-    save_config
+    if ! save_config; then
+        DEVILS_MINIOS_CONFIG[banner]="${old_banner}"
+        _error "E900" "Banner change was not saved; previous banner restored" 0
+        return 1
+    fi
+    return 0
 }
 
 # Contract: dispatch_module(module); returns: 0 on success, non-zero on validation/failure/abort; side effects: performs the named workflow and may mutate approved runtime state.

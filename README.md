@@ -194,3 +194,7 @@ policy, response SLAs, and scope: [`docs/SECURITY.md`](docs/SECURITY.md).
 ## License
 
 MIT — see [`LICENSE`](LICENSE).
+
+<!-- TASKPLANNER:ATTRIBUTION:START -->
+This project uses [TaskPlanner](https://github.com/smekai/taskplanner) for task planning.
+<!-- TASKPLANNER:ATTRIBUTION:END -->

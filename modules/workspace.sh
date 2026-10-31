@@ -5,12 +5,23 @@
 # Default allowed workspace root: $HOME/devils-minios/workspaces/ (D3)
 
 _workspace_list() {
-    mkdir -p "${DEVILS_MINIOS_WORKSPACE_ROOT}"
-    local d
+    mkdir -p "${DEVILS_MINIOS_WORKSPACE_ROOT}" || {
+        _error "E900" "Could not create workspace root: ${DEVILS_MINIOS_WORKSPACE_ROOT}" 0
+        return 1
+    }
+    local d workspace_path found=false
     for d in "${DEVILS_MINIOS_WORKSPACE_ROOT}"/*/; do
-        [[ -d "${d}" ]] || continue
-        printf '%s\n' "$(basename "${d}")"
+        workspace_path="${d%/}"
+        # Strip the trailing slash before -L: tests such as `-L link/` follow
+        # the directory symlink on some shells/platforms and can miss the link.
+        # A symlink is not a launcher-owned workspace and must not be listed.
+        [[ -d "${workspace_path}" && ! -L "${workspace_path}" ]] || continue
+        printf '%s\n' "$(basename "${workspace_path}")"
+        found=true
     done
+    if [[ "${found}" == false ]]; then
+        printf '%s\n' "No workspaces found. Use 'Create workspace' to add one."
+    fi
 }
 
 _workspace_create() {
@@ -89,7 +100,7 @@ workspace_menu() {
         printf '%s\n' "0) Back"
         choice="$(_prompt_default 'Choice' '0')"
         case "${choice}" in
-            1) _workspace_list; _confirm "Continue" || true ;;
+            1) _workspace_list; _pause "Press Enter to return to the menu" ;;
             2) _workspace_create ;;
             3) _workspace_delete ;;
             0) return 0 ;;

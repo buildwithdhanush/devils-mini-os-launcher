@@ -9,11 +9,15 @@
 # PLATFORM, SOURCE, WIDTH (§9, §10, §19, §35)
 # ============================================================================
 
+_termux_app_directory_present() {
+    [[ -d "/data/data/com.termux" || -d "/data/data/com.termux.playstore" ]]
+}
+
 _detect_platform() {
     DEVILS_MINIOS_PLATFORM="unknown"
     if [[ -n "${PREFIX:-}" && "${PREFIX}" == */com.termux/* ]]; then
         DEVILS_MINIOS_PLATFORM="termux"
-    elif [[ -d "/data/data/com.termux" || -d "/data/data/com.termux.playstore" ]]; then
+    elif _termux_app_directory_present; then
         DEVILS_MINIOS_PLATFORM="termux"
     elif [[ "$(uname -s 2>/dev/null || true)" == "Linux" ]]; then
         DEVILS_MINIOS_PLATFORM="linux"

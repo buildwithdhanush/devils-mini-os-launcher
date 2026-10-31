@@ -73,8 +73,8 @@ health_check_menu() {
         printf '%s\n' "0) Back"
         choice="$(_prompt_default 'Choice' '0')"
         case "${choice}" in
-            1) _health_check_show false; _confirm "Continue" || true ;;
-            2) _health_check_show true; _confirm "Continue" || true ;;
+            1) _health_check_show false; _pause "Press Enter to return to the menu" ;;
+            2) _health_check_show true; _pause "Press Enter to return to the menu" ;;
             0) return 0 ;;
             *) printf 'Invalid selection.\n'; sleep 1 ;;
         esac

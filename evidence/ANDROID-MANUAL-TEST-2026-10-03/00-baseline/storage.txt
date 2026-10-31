@@ -1,0 +1,10 @@
+===== STORAGE =====
+Filesystem       Size Used Avail Use% Mounted on
+/dev/block/dm-64 108G  82G   26G  76% /data/user/0
+/dev/block/dm-64 108G  82G   26G  76% /data/user/0
+
+===== PROJECT SIZE =====
+2.1M	/data/data/com.termux/files/home/devils-mini-os-launcher-Testing
+
+===== PREFIX SIZE =====
+2.5G	/data/data/com.termux/files/usr

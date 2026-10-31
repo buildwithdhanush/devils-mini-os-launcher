@@ -189,10 +189,10 @@ linux_env_menu() {
         printf '%s\n' "0) Back"
         choice="$(_prompt_default 'Choice' '0')"
         case "${choice}" in
-            1) _linux_env_list_distros; _confirm "Continue" || true ;;
+            1) _linux_env_list_distros; _pause "Press Enter to return to the menu" ;;
             2) _linux_env_install_distro ;;
             3) _linux_env_launch_distro ;;
-            4) _linux_env_list_desktops; _confirm "Continue" || true ;;
+            4) _linux_env_list_desktops; _pause "Press Enter to return to the menu" ;;
             5) _linux_env_setup_desktop ;;
             6) _linux_env_start_desktop ;;
             0) return 0 ;;

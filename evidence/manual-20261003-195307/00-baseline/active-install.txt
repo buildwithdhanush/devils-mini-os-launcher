@@ -1,0 +1,2 @@
+active_install=/data/data/com.termux/files/usr/opt/devils-minios
+517K	/data/data/com.termux/files/usr/opt/devils-minios

@@ -112,6 +112,11 @@ assert_contains "_confirm accepts y with status 0" "${out}" "yes_rc=0"
 assert_contains "_confirm rejects n with non-zero status" "${out}" "no_rc=4"
 assert_contains "_confirm rejects empty input" "${out}" "empty_rc=4"
 assert_contains "_confirm rejects garbage input" "${out}" "garbage_rc=4"
+section "Informational pause: Enter continues without pretending to confirm"
+out="$(run_core "${SBOX}" '
+    printf "\n" | _pause "Continue" >/dev/null 2>&1; printf "pause_rc=%s\n" "$?"
+')"
+assert_contains "_pause accepts Enter as a continue action" "${out}" "pause_rc=0"
 section "Forbidden-token rejection: install_target/package_name shell metacharacters (§18.2/§18.3 schema load)"
 out="$(run_module "${SBOX}" proot_apps '
     _validate_proot_app_record "git" "Git" "dev-proot" "desc" "git; rm -rf /" "all" "any" \
@@ -269,10 +274,21 @@ out="$(run_core "${SBOX}" '
 ')"
 assert_contains "execute_structured applies a per-executor timeout map (§23.0-05)" "${out}" "uses_timeout_map=yes"
 assert_contains "execute_structured closes stdin for non-interactive dispatches" "${out}" "closes_stdin=yes"
-assert_contains "execute_structured switches to a neutral cwd for non-interactive dispatches" "${out}" "sets_safe_cwd=yes"
+assert_contains "execute_structured retains a neutral cwd helper for ordinary non-interactive dispatches" "${out}" "sets_safe_cwd=yes"
 assert_contains "execute_structured distinguishes interactive proot-distro login" "${out}" "checks_interactive=yes"
 assert_contains "every allowlisted executor has a timeout policy entry" "${out}" "executors_without_timeout=0"
 assert_contains "policy wrapping preserves normal exit-status passthrough" "${out}" "true_still_works_rc=0"
+section "§23.0-05: sha256sum manifest checks preserve the caller-selected working directory"
+SBOX_SHA="$(new_sandbox)"
+out="$(run_core "${SBOX_SHA}" '
+    mkdir -p "${HOME}/manifest-check"
+    printf "payload\n" > "${HOME}/manifest-check/payload"
+    (cd "${HOME}/manifest-check" && sha256sum payload > SHA256SUMS)
+    (cd "${HOME}/manifest-check" && execute_structured sha256sum "-c" "SHA256SUMS" "--status")
+    printf "manifest_check_rc=%s\n" "$?"
+    printf "caller_dir=%s\n" "$(cd "${HOME}/manifest-check" && pwd)"
+')"
+assert_contains "sha256sum manifest check succeeds from the manifest directory" "${out}" "manifest_check_rc=0"
 section "§23.0-05: interactive proot-distro login detection is exempt from timeout/stdin, batch calls are not"
 out="$(run_core "${SBOX}" '
     _is_interactive_executor_call "proot-distro" "login" "ubuntu" && printf "plain_login=interactive\n" || printf "plain_login=batch\n"

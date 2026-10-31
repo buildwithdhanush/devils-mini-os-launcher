@@ -40,13 +40,25 @@ _system_tools_kill_process() {
 }
 
 _system_tools_maintenance() {
-    _confirm "Clear diagnostic cache (${DEVILS_MINIOS_CACHE_DIR})" || return 0
+    local cache_home="${XDG_CACHE_HOME:-${HOME}/.cache}"
     local cache_dir="${DEVILS_MINIOS_CACHE_DIR}" entry
-    validate_path "${cache_dir}" "${HOME}/.cache" || { _error "$(_path_validation_error_code)" "Invalid cache directory" 0; return 2; }
+    _confirm "Clear diagnostic cache (${cache_dir})" || return 0
+
+    # DEVILS_MINIOS_CACHE_DIR is derived from XDG_CACHE_HOME when configured;
+    # validate it against that same base rather than hard-coding ~/.cache.
+    validate_path "${cache_dir}" "${cache_home}" || { _error "$(_path_validation_error_code)" "Invalid cache directory" 0; return 2; }
     [[ -d "${cache_dir}" && ! -L "${cache_dir}" ]] || { _error "E703" "Cache directory is invalid or symlinked" 0; return 2; }
+
+    # Temporarily enable globbing of hidden entries and empty-directory
+    # handling, then restore the caller's original shell options.
+    local had_nullglob=false had_dotglob=false
+    shopt -q nullglob && had_nullglob=true
+    shopt -q dotglob && had_dotglob=true
     shopt -s nullglob dotglob
     local -a entries=("${cache_dir}"/*)
-    shopt -u dotglob nullglob
+    [[ "${had_dotglob}" == true ]] || shopt -u dotglob
+    [[ "${had_nullglob}" == true ]] || shopt -u nullglob
+
     for entry in "${entries[@]}"; do
         validate_path "${entry}" "${cache_dir}" || { _error "$(_path_validation_error_code)" "Invalid cache entry" 0; return 2; }
         # Revalidate immediately before mutation (§22.1 step 7). A symlink
@@ -59,6 +71,7 @@ _system_tools_maintenance() {
         fi
     done
     _info "Cache cleared"
+    printf '%s\n' "Cache cleared."
 }
 
 # Contract: system_tools_menu(none); returns: 0 on normal completion, non-zero on failure/abort where applicable; side effects: renders UI and may invoke delegated user actions.
@@ -77,9 +90,9 @@ system_tools_menu() {
         case "${choice}" in
             1) _system_tools_backup ;;
             2) _system_tools_restore ;;
-            3) _system_tools_process_list; _confirm "Continue" || true ;;
+            3) _system_tools_process_list; _pause "Press Enter to return to the menu" ;;
             4) _system_tools_kill_process ;;
-            5) _system_tools_maintenance ;;
+            5) _system_tools_maintenance || true; _pause "Press Enter to return to the menu" ;;
             0) return 0 ;;
             *) printf 'Invalid selection.\n'; sleep 1 ;;
         esac

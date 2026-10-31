@@ -251,6 +251,15 @@ _confirm() {
     esac
 }
 
+# Informational pause: Enter returns to the menu; this is not an approval gate.
+_pause() {
+    local prompt="${1:-Press Enter to continue}"
+    local answer
+    printf '%s: ' "${prompt}"
+    IFS= read -r answer || true
+    return 0
+}
+
 _prompt_default() {
     local prompt="${1:-Value}"
     local default="${2:-}"
@@ -389,14 +398,15 @@ core_init() {
         trigger_safe_mode "persistent state recovery failed"
     }
     if [[ "${DEVILS_MINIOS_STATE_RECOVERY_REINITIALIZED:-false}" == true ]]; then
+        # Cross-file contract: devils-minios.sh/core/core_state.sh consume this state.
+        # shellcheck disable=SC2034
         DEVILS_MINIOS_CURRENT_STATE="FIRST_BOOT"
     fi
     if ! load_config; then
-        # §48.2 E412 / §26.1 CFG-TAMPER: load_config() returns non-zero
-        # only for the manifest-tamper signal (never for CFG-MISSING/
-        # CFG-BAD-VALUE, which it self-heals and returns 0 for). Per §26.1
-        # this is never auto-recovered - route directly to Safe Mode.
-        trigger_safe_mode "configuration/installation tamper detected (E412)"
+        # Manifest tampering (E412) must never auto-recover; filesystem or
+        # defaults-source failures also stop normal startup and route to Safe
+        # Mode rather than continuing with an unpersisted configuration.
+        trigger_safe_mode "${DEVILS_MINIOS_CONFIG_LOAD_FAILURE_REASON:-configuration integrity/recovery/persistence failed}"
     fi
 
     # Runtime context is deliberately process-local and is built only after
